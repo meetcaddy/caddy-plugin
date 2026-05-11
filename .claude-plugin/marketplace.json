@@ -12,7 +12,13 @@
   "plugins": [
     {
       "name": "caddy",
-      "source": "./plugin",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/meetcaddy/caddy-plugin.git",
+        "path": "plugin",
+        "ref": "v0.1.0",
+        "sha": "928751467459016cc64947a5ecefa7000eb1fea8"
+      },
       "description": "Caddy. Your unfair advantage. Voice-fingerprinted drafts and operator rhythm.",
       "version": "0.1.0",
       "author": {
