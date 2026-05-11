@@ -1,4 +1,4 @@
-# Caddy plugin (v0.1.1)
+# Caddy plugin (v0.1.2)
 
 > **Invite-only v1.0.** Caddy is currently a closed-pilot SaaS for a small group of operators. If you do not have a bearer token from Tucker, you cannot use this plugin yet. Contact hi@meetcaddy.com to request access.
 
@@ -28,6 +28,10 @@ Two long-lived secrets, both exported as environment variables in the shell that
 
 ## Install (macOS only for v0.1.0)
 
+> **Editor note:** if your terminal doesn't have the `code` shell command (typical on a fresh Mac), substitute `open -e` in the commands below. `open -e ~/.zshrc` opens the file in TextEdit. To create an empty file first if it doesn't exist: `touch ~/.zshrc && open -e ~/.zshrc`. If you'd rather install the `code` CLI: open VS Code, press Cmd+Shift+P, type "shell command", pick **Shell Command: Install 'code' command in PATH**.
+
+> **TextEdit warning:** before editing `~/.zshrc` or your voice/brand files in TextEdit, turn off Smart Quotes (Edit → Substitutions → uncheck Smart Quotes). TextEdit otherwise silently converts straight `"` to curly `"` which breaks shell config files and degrades voice fingerprint matching.
+
 1. Export your two secrets in your shell profile so every Claude Code session inherits them:
 
    ```sh
@@ -37,6 +41,13 @@ Two long-lived secrets, both exported as environment variables in the shell that
    ```
 
    Reload your shell: `source ~/.zshrc` (or close and reopen the terminal).
+
+   Verify both are set:
+   ```sh
+   echo "Bearer: ${CADDY_BEARER_TOKEN:0:8}..."
+   echo "Anthropic: ${ANTHROPIC_API_KEY:0:8}..."
+   ```
+   Both should print something (the `:0:8` only shows the first 8 chars; full token isn't echoed).
 
 2. Create your local voice + brand markdown (the plugin reads these on every draft):
 
@@ -120,9 +131,18 @@ These come from the small Node script that bridges Claude Code to the Caddy back
 | `proxy: stream interrupted` | The streaming response was cut off mid-flight (network blip, laptop sleep, etc.). | Try again. The draft was not delivered; this is a fresh run. |
 | Anything else starting with `proxy:` | Unexpected proxy error. | Email hi@meetcaddy.com with the full error text and the timestamp. |
 
+### Claude Code's own auth errors (not Caddy)
+
+These are errors from Claude Code itself, before the Caddy plugin even runs. They look like Caddy errors because they show up in response to `/caddy:draft`, but the fix is on the Claude Code side.
+
+| Error message | What it means | What you do |
+|---|---|---|
+| `Please run /login` + `API Error: 401 Invalid authentication credentials` | Claude Code's own session token is missing or expired on this Mac. The Caddy plugin never got a chance to run. | Inside your Claude Code session, type `/login` and complete the browser sign-in flow. Then retry `/caddy:draft`. |
+| Slash command `/caddy:draft` not recognized | The plugin didn't load. | Run `/plugin` and verify `caddy` shows as installed. If not, run `/plugin install caddy@meet-caddy` again. If it shows installed but the command still doesn't appear, run `/reload-plugins`. |
+
 ### Install-level errors (rare)
 
-If you see a totally different error (`command not found: node`, JSON parse error, the slash command doesn't appear at all, etc.), it's an install issue rather than a server issue. Check that Node.js 18 or higher is on your PATH (`node --version`) and that `bin/caddy-mcp-proxy.mjs` is executable. Then email hi@meetcaddy.com.
+If you see a totally different error (`command not found: node`, JSON parse error, etc.), it's an install issue rather than a server issue. Check that Node.js 18 or higher is on your PATH (`node --version`) and that `bin/caddy-mcp-proxy.mjs` is executable. Then email hi@meetcaddy.com.
 
 ---
 
@@ -175,7 +195,10 @@ Do **not** include your bearer token or Anthropic API key in support emails. We 
 
 A few rough edges to be aware of. None are blockers, but they affect how you'll interact with the plugin day to day.
 
-- **You must answer "No" to the API key prompt at install time.** Claude Code v2.1.x has a bug where MCP server env blocks in plugin manifests aren't reliably expanded. Caddy works around this by reading `ANTHROPIC_API_KEY` from your shell environment directly. If you paste your key into the plugin's install prompt instead, it gets stored in plugin config and bypasses your env var, which makes future key rotations harder to reason about. **Always skip the prompt and rely on `export ANTHROPIC_API_KEY=...` in your shell profile.**
+- **Claude Code may prompt about your `ANTHROPIC_API_KEY` when it launches.** The prompt typically reads "Detected `ANTHROPIC_API_KEY` in environment. Use this for your Claude Code session?" with Yes/No options.
+  - **If you're on Claude Max (subscription):** answer **No**. Your env var stays available to the Caddy plugin's proxy regardless of what Claude Code uses for itself, and saying Yes would route Claude Code's own usage through your API key, which double-bills against your Max sub.
+  - **If you're on pay-per-token Anthropic API only (no Max):** answer **Yes**. That tells Claude Code to use your API key for its own usage too. Either way, Caddy still reads the env var directly via the proxy.
+  - **If after answering "No" you see `Please run /login`:** Claude Code's OAuth session is missing or expired on this Mac (common on a fresh install). Type `/login` inside Claude Code, complete the browser sign-in, and retry. This is purely a Claude Code thing; the Caddy plugin is unaffected.
 
 - **Env vars must be exported in the same shell that launches Claude Code.** If you start Claude Code from one terminal and your `export` lines live in `~/.bashrc` but you launched from a zsh session (or vice versa), the plugin won't see the secrets. Use `echo $CADDY_BEARER_TOKEN` and `echo $ANTHROPIC_API_KEY` in the same terminal *before* launching Claude Code to verify they're set.
 
