@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Caddy. Your unfair advantage. Voice-fingerprinted drafts and operator rhythm, delivered as a Claude Code plugin.",
-    "version": "0.1.1"
+    "version": "0.1.2"
   },
   "plugins": [
     {
@@ -16,11 +16,11 @@
         "source": "git-subdir",
         "url": "https://github.com/meetcaddy/caddy-plugin.git",
         "path": "plugin",
-        "ref": "v0.1.1",
-        "sha": "fff4a1f75226aa2b15aabaef7da90424fec29c36"
+        "ref": "v0.1.2",
+        "sha": "f34eaa7e3be071896ab05448bd616ad801352a27"
       },
       "description": "Caddy. Your unfair advantage. Voice-fingerprinted drafts and operator rhythm.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "author": {
         "name": "Orbital Access LLC d/b/a Meet Caddy",
         "email": "hi@meetcaddy.com"
