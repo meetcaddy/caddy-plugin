@@ -1,4 +1,4 @@
-# Caddy plugin (v0.1.7)
+# Caddy plugin (v0.1.8)
 
 > **Invite-only v1.0.** Caddy is currently a closed-pilot SaaS for a small group of operators. If you do not have a bearer token from Tucker, you cannot use this plugin yet. Contact hi@meetcaddy.com to request access.
 
@@ -116,6 +116,16 @@ Before any meeting where you want to walk in sharp, run `/caddy:prep`. Tell Cadd
 
 ```
 /caddy:prep
+```
+
+---
+
+## Meeting followup
+
+After a meeting, run `/caddy:followup`. Tell Caddy what happened (outcomes, decisions, action items). It reads your context (voice + brand + the matching prep file from earlier if you ran `/caddy:prep` with the same slug + date), then writes a recap brief at `~/.caddy/briefs/followup-YYYY-MM-DD-<slug>.md` with what was decided, action items split Mine/Theirs, open threads, triage suggestions, and a draft follow-up message in your voice.
+
+```
+/caddy:followup
 ```
 
 ---
@@ -244,7 +254,7 @@ Do **not** include your bearer token or Anthropic API key in support emails. We 
 - It does not store voice/brand markdown anywhere besides your local `~/.caddy/`. Those files live on your machine; back them up yourself.
 - It does not log anything beyond what Claude Code itself logs in your session.
 - It does not work on Windows or Linux yet (macOS first; other platforms after the v1.0 pilot).
-- It does not support the `/caddy:followup` anchor skill yet. It lands in v0.2.0+. `/caddy:settings`, `/caddy:intake`, `/caddy:triage`, `/caddy:start-of-day`, and `/caddy:prep` are supported as of v0.1.7.
+- All v1.0 anchor skills (`/caddy:intake`, `/caddy:triage`, `/caddy:start-of-day`, `/caddy:prep`, `/caddy:followup`) are supported as of v0.1.8, alongside `/caddy:draft` and `/caddy:settings`.
 
 ---
 
@@ -259,7 +269,7 @@ A few rough edges to be aware of. None are blockers, but they affect how you'll 
 
 - **Env vars must be exported in the same shell that launches Claude Code.** If you start Claude Code from one terminal and your `export` lines live in `~/.bashrc` but you launched from a zsh session (or vice versa), the plugin won't see the secrets. Use `echo $CADDY_BEARER_TOKEN` and `echo $ANTHROPIC_API_KEY` in the same terminal *before* launching Claude Code to verify they're set.
 
-- **`/caddy:draft`, `/caddy:settings`, `/caddy:intake`, `/caddy:triage`, `/caddy:start-of-day`, and `/caddy:prep` are the commands shipped as of v0.1.7.** No `/caddy:followup` yet. It ships in v0.2.0+.
+- **`/caddy:draft`, `/caddy:settings`, `/caddy:intake`, `/caddy:triage`, `/caddy:start-of-day`, `/caddy:prep`, and `/caddy:followup` are ALL shipped as of v0.1.8.** That's the full v1.0 anchor skills set. v1.1+ ports the remaining 38+ skills.
 
 - **Only one customer-settable key in v1.0: `connector` (modes: `anthropic-connector` or `copy-paste`).** Additional settings — voice strictness, model preference, draft length, etc. — ship in v1.1+. The config file schema includes a `schemaVersion` field so future settings can be added without breaking existing customer config.
 
