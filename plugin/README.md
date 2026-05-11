@@ -1,0 +1,177 @@
+# Caddy plugin (v0.1.0)
+
+> **Invite-only v1.0.** Caddy is currently a closed-pilot SaaS for a small group of operators. If you do not have a bearer token from Tucker, you cannot use this plugin yet. Contact hi@meetcaddy.com to request access.
+
+Caddy. Your unfair advantage. Voice-fingerprinted drafts, powered by the Caddy backend.
+
+This plugin is the thin Claude Code surface for the Caddy SaaS. The actual prompt logic, voice tuning, and model routing live on Caddy's servers; this plugin just routes your slash commands to them and renders the streamed output in your local Claude Code session.
+
+---
+
+## Prerequisite
+
+Claude Code (CLI or IDE extension) installed and authenticated.
+
+If you do not have Claude Code yet, install it first: see https://docs.claude.com/en/docs/claude-code/quickstart. Then come back here.
+
+---
+
+## What you need
+
+Two long-lived secrets, both exported as environment variables in the shell that launches Claude Code:
+
+1. **`CADDY_BEARER_TOKEN`** — your Caddy account token. Issued via a one-time exchange URL Tucker sends after invite approval. The URL is good for a single click; you redeem it to receive the bearer token in your browser, then paste the token into your shell profile (or `.env`). Treat the bearer token like a password.
+
+2. **`ANTHROPIC_API_KEY`** — your own Anthropic API key from https://platform.anthropic.com. Caddy uses BYOK (bring your own key); you pay Anthropic directly for the model usage, and Caddy never stores this key on its servers (per-request only).
+
+---
+
+## Install (macOS only for v0.1.0)
+
+1. Clone (or download) the Caddy plugin source. The folder containing this README is the plugin root.
+
+2. Make the proxy script executable (Claude Code preserves the mode bit but a fresh download may not):
+
+   ```sh
+   chmod +x ./bin/caddy-mcp-proxy.mjs
+   ```
+
+3. Export your two secrets in your shell profile so every Claude Code session inherits them:
+
+   ```sh
+   # in ~/.zshrc or ~/.bashrc
+   export CADDY_BEARER_TOKEN="caddy_..."        # from Tucker's exchange URL
+   export ANTHROPIC_API_KEY="sk-ant-..."         # from platform.anthropic.com
+   ```
+
+   Reload your shell: `source ~/.zshrc` (or close and reopen the terminal).
+
+4. Create your local voice + brand markdown (the plugin reads these on every draft):
+
+   ```sh
+   mkdir -p ~/.caddy
+   $EDITOR ~/.caddy/voice.md     # paste 200+ words of your writing
+   $EDITOR ~/.caddy/brand.md     # paste 100+ words about your brand
+   ```
+
+5. Add the plugin to Claude Code:
+
+   ```sh
+   claude --plugin-dir ./
+   ```
+
+   (Or, if Tucker has shared a marketplace URL, install via `/plugin` inside Claude Code. v0.1.0 is local-install only; marketplace ships in v0.2.0.)
+
+6. Test:
+
+   ```
+   /caddy:draft Write a 3-paragraph LinkedIn post announcing my Q4 product update.
+   ```
+
+   You should see the draft stream in line by line, in your voice.
+
+---
+
+## Secret hygiene
+
+**Do NOT** paste `CADDY_BEARER_TOKEN` or `ANTHROPIC_API_KEY` into:
+- Any chat interface, including Claude.ai conversations or other AI assistants
+- Any git repository (even private; rotate immediately if pushed)
+- Any screenshot for support (redact before sharing)
+- Any `echo` or `cat` command that prints them to your terminal scrollback
+
+If you have done any of the above, treat the affected token as compromised and rotate it immediately (see "Credential lifecycle" below).
+
+The Caddy bearer token is long-lived; it does not expire on a schedule. The Anthropic API key is long-lived too. Both must be rotated manually if compromised.
+
+---
+
+## Credential lifecycle
+
+### Caddy bearer token
+
+If you suspect your bearer token is leaked, email **hi@meetcaddy.com** immediately with subject line `Bearer token rotation request`. Include your account email. Tucker will revoke the old token and issue a fresh one-time exchange URL. Existing Claude Code sessions will start returning auth errors until you swap the new token into your env vars.
+
+### Anthropic API key
+
+If you suspect your Anthropic key is leaked, revoke it yourself at https://platform.anthropic.com/settings/keys. Generate a new key on the same page. Update `ANTHROPIC_API_KEY` in your shell profile, reload your shell, and restart Claude Code. Caddy does not need to be involved; we never stored your key.
+
+---
+
+## First-call failure table
+
+If `/caddy:draft` returns an error, here is what each code means and what to do:
+
+| Code | What it means | What you do |
+|---|---|---|
+| `invalid_api_key` | Your `ANTHROPIC_API_KEY` was rejected by Anthropic. | Check the env var is exported in the same shell Claude Code runs in. Verify the key is active at https://platform.anthropic.com/settings/keys. |
+| `permission_denied` | Your Anthropic key works but lacks permission for the requested model. | Check your Anthropic account tier and model access. |
+| `invalid_request` | Caddy sent Anthropic a malformed request. | Likely a Caddy bug. Email hi@meetcaddy.com with the timestamp. |
+| `not_found` | The model or resource Caddy asked for does not exist. | Your plugin version may be out of date. Update the plugin source, or contact hi@meetcaddy.com. |
+| `upstream_rate_limited` | Anthropic rate-limited the request. | Wait 60 seconds and retry. If persistent, your Anthropic account may need a higher rate tier. |
+| `upstream_unavailable` | Anthropic is unreachable or timed out (Caddy has a 55-second budget per draft). | Try again shortly. If persistent on multiple drafts, check Anthropic status. |
+| `internal` | Caddy hit an internal error. | Try again. If persistent, email hi@meetcaddy.com with the timestamp; do NOT include the bearer token or Anthropic key. |
+
+### Errors from the plugin's local proxy (start with `proxy:`)
+
+These come from the small Node script that bridges Claude Code to the Caddy backend.
+
+| Message starts with | What it means | What you do |
+|---|---|---|
+| `proxy: upstream 401` | Your `CADDY_BEARER_TOKEN` was rejected by Caddy (wrong, expired, or revoked). | Verify the env var matches the bearer you received from your exchange URL. If it does and still fails, your token may have been rotated. Email hi@meetcaddy.com to reissue. |
+| `proxy: upstream 4xx` (other 4xx) | Caddy rejected the request (rare; typically a malformed call). | Try again. If it persists, email hi@meetcaddy.com with the timestamp. |
+| `proxy: upstream 5xx` | Caddy backend is having problems. | Wait 60 seconds and retry. If persistent across multiple drafts, email hi@meetcaddy.com. |
+| `proxy: could not reach Caddy server (ENOTFOUND \| ECONNREFUSED \| ETIMEDOUT)` | Network connectivity issue (DNS, firewall, or Caddy is down). | Check your internet connection. If you're behind a corporate firewall, the proxy needs outbound HTTPS to `caddy-app-tbern75s-projects.vercel.app`. If your network is fine, Caddy itself may be down — wait, then retry. |
+| `proxy: stream interrupted` | The streaming response was cut off mid-flight (network blip, laptop sleep, etc.). | Try again. The draft was not delivered; this is a fresh run. |
+| Anything else starting with `proxy:` | Unexpected proxy error. | Email hi@meetcaddy.com with the full error text and the timestamp. |
+
+### Install-level errors (rare)
+
+If you see a totally different error (`command not found: node`, JSON parse error, the slash command doesn't appear at all, etc.), it's an install issue rather than a server issue. Check that Node.js 18 or higher is on your PATH (`node --version`) and that `bin/caddy-mcp-proxy.mjs` is executable. Then email hi@meetcaddy.com.
+
+---
+
+## Uninstall
+
+To remove the plugin from Claude Code:
+
+```sh
+claude --plugin-dir-remove ./   # or use /plugin uninstall caddy inside a session
+```
+
+Then delete the plugin folder if you no longer want the source on disk. Your `~/.caddy/voice.md` and `~/.caddy/brand.md` files are yours; they are NOT touched by uninstall. Delete them manually if you want a clean wipe.
+
+Cancelling your Caddy subscription is a separate flow (email hi@meetcaddy.com). Uninstalling the plugin does not cancel billing.
+
+---
+
+## Support
+
+Compromise reports, install help, billing questions, feature requests: **hi@meetcaddy.com**. v1.0 is invite-only, so this address is monitored personally by Tucker.
+
+When reporting an issue, include:
+- Timestamp (your local time + timezone)
+- The exact error code (from the failure table above) or error text
+- Your account email
+- Claude Code version (`claude --version`)
+- macOS version
+
+Do **not** include your bearer token or Anthropic API key in support emails. We do not need them to debug; if we do, we will ask via a secure channel.
+
+---
+
+## What this plugin does NOT do (v0.1.0)
+
+- It does not install or update itself; manual `git pull` or re-clone for now.
+- It does not store voice/brand markdown anywhere besides your local `~/.caddy/`. Those files live on your machine; back them up yourself.
+- It does not log anything beyond what Claude Code itself logs in your session.
+- It does not work on Windows or Linux yet (macOS first; other platforms after the v1.0 pilot).
+- It does not support `/caddy:settings` or other anchor skills (`/caddy:intake`, `/caddy:triage`, etc.) yet. Those land in v0.2.0+.
+
+---
+
+## Under the hood (for curious operators)
+
+The plugin ships a small Node.js stdio-to-HTTP proxy at `bin/caddy-mcp-proxy.mjs` (about 100 lines, zero third-party dependencies). The proxy reads `CADDY_BEARER_TOKEN` and `ANTHROPIC_API_KEY` from the shell environment, then forwards each MCP request to Caddy's MCP server at https://caddy-app-tbern75s-projects.vercel.app/api/mcp with those values attached as request headers. SSE streaming responses are parsed and forwarded to stdout line by line. All draft generation happens server-side using Anthropic Claude Sonnet 4.6, streamed back via the MCP `notifications/message` channel. Node.js 18 or higher is required (built-in `fetch`).
+
+Your bearer token authenticates you to Caddy. Your Anthropic key pays for the model call. Caddy stores neither.

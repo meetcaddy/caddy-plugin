@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "meet-caddy",
+  "owner": {
+    "name": "Orbital Access LLC d/b/a Meet Caddy",
+    "email": "hi@meetcaddy.com"
+  },
+  "metadata": {
+    "description": "Caddy. Your unfair advantage. Voice-fingerprinted drafts and operator rhythm, delivered as a Claude Code plugin.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "caddy",
+      "source": "./plugin",
+      "description": "Caddy. Your unfair advantage. Voice-fingerprinted drafts and operator rhythm.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Orbital Access LLC d/b/a Meet Caddy",
+        "email": "hi@meetcaddy.com"
+      },
+      "homepage": "https://meetcaddy.com",
+      "category": "knowledge-work",
+      "tags": ["drafting", "voice", "operator-tools", "byok"],
+      "keywords": ["caddy", "voice-fingerprint", "operator-rhythm", "drafting"]
+    }
+  ]
+}
