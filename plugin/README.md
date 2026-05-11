@@ -1,4 +1,4 @@
-# Caddy plugin (v0.1.0)
+# Caddy plugin (v0.1.1)
 
 > **Invite-only v1.0.** Caddy is currently a closed-pilot SaaS for a small group of operators. If you do not have a bearer token from Tucker, you cannot use this plugin yet. Contact hi@meetcaddy.com to request access.
 
@@ -28,15 +28,7 @@ Two long-lived secrets, both exported as environment variables in the shell that
 
 ## Install (macOS only for v0.1.0)
 
-1. Clone (or download) the Caddy plugin source. The folder containing this README is the plugin root.
-
-2. Make the proxy script executable (Claude Code preserves the mode bit but a fresh download may not):
-
-   ```sh
-   chmod +x ./bin/caddy-mcp-proxy.mjs
-   ```
-
-3. Export your two secrets in your shell profile so every Claude Code session inherits them:
+1. Export your two secrets in your shell profile so every Claude Code session inherits them:
 
    ```sh
    # in ~/.zshrc or ~/.bashrc
@@ -46,7 +38,7 @@ Two long-lived secrets, both exported as environment variables in the shell that
 
    Reload your shell: `source ~/.zshrc` (or close and reopen the terminal).
 
-4. Create your local voice + brand markdown (the plugin reads these on every draft):
+2. Create your local voice + brand markdown (the plugin reads these on every draft):
 
    ```sh
    mkdir -p ~/.caddy
@@ -54,15 +46,18 @@ Two long-lived secrets, both exported as environment variables in the shell that
    $EDITOR ~/.caddy/brand.md     # paste 100+ words about your brand
    ```
 
-5. Add the plugin to Claude Code:
+3. Launch Claude Code, then add the Caddy marketplace and install the plugin:
 
-   ```sh
-   claude --plugin-dir ./
+   ```
+   /plugin marketplace add meetcaddy/caddy-plugin
+   /plugin install caddy@meet-caddy
    ```
 
-   (Or, if Tucker has shared a marketplace URL, install via `/plugin` inside Claude Code. v0.1.0 is local-install only; marketplace ships in v0.2.0.)
+   The first command registers Caddy's plugin catalog. The second downloads the plugin into your Claude Code session (sparse clone of the `plugin/` folder, pinned to the v0.1.0 commit).
 
-6. Test:
+4. **When Claude Code prompts you about an API key for the MCP server, answer "No"** (or hit Enter to skip). Caddy reads `ANTHROPIC_API_KEY` from your shell environment directly. If you paste it into the prompt, Claude Code stores it in plugin config instead, which can confuse rotation later. See "Known limitations" below for context.
+
+5. Test:
 
    ```
    /caddy:draft Write a 3-paragraph LinkedIn post announcing my Q4 product update.
@@ -133,15 +128,21 @@ If you see a totally different error (`command not found: node`, JSON parse erro
 
 ## Uninstall
 
-To remove the plugin from Claude Code:
+To remove the plugin from Claude Code, run inside a session:
 
-```sh
-claude --plugin-dir-remove ./   # or use /plugin uninstall caddy inside a session
+```
+/plugin uninstall caddy@meet-caddy
 ```
 
-Then delete the plugin folder if you no longer want the source on disk. Your `~/.caddy/voice.md` and `~/.caddy/brand.md` files are yours; they are NOT touched by uninstall. Delete them manually if you want a clean wipe.
+If you also want to remove the marketplace registration (so Caddy no longer shows up in `/plugin marketplace list`):
 
-Cancelling your Caddy subscription is a separate flow (email hi@meetcaddy.com). Uninstalling the plugin does not cancel billing.
+```
+/plugin marketplace remove meet-caddy
+```
+
+You can also unset your env vars by removing the two `export` lines from your shell profile and reloading the shell. Your `~/.caddy/voice.md` and `~/.caddy/brand.md` files are yours; they are NOT touched by uninstall. Delete them manually if you want a clean wipe.
+
+Cancelling your Caddy subscription is a separate flow (email hi@meetcaddy.com). Uninstalling the plugin does not cancel billing, and revoking your bearer token is a separate operator action on our end.
 
 ---
 
@@ -162,11 +163,29 @@ Do **not** include your bearer token or Anthropic API key in support emails. We 
 
 ## What this plugin does NOT do (v0.1.0)
 
-- It does not install or update itself; manual `git pull` or re-clone for now.
+- It does not auto-update silently. Bumps go out as new marketplace versions; you re-run `/plugin install caddy@meet-caddy` to pick them up.
 - It does not store voice/brand markdown anywhere besides your local `~/.caddy/`. Those files live on your machine; back them up yourself.
 - It does not log anything beyond what Claude Code itself logs in your session.
 - It does not work on Windows or Linux yet (macOS first; other platforms after the v1.0 pilot).
 - It does not support `/caddy:settings` or other anchor skills (`/caddy:intake`, `/caddy:triage`, etc.) yet. Those land in v0.2.0+.
+
+---
+
+## Known limitations (v0.1.0)
+
+A few rough edges to be aware of. None are blockers, but they affect how you'll interact with the plugin day to day.
+
+- **You must answer "No" to the API key prompt at install time.** Claude Code v2.1.x has a bug where MCP server env blocks in plugin manifests aren't reliably expanded. Caddy works around this by reading `ANTHROPIC_API_KEY` from your shell environment directly. If you paste your key into the plugin's install prompt instead, it gets stored in plugin config and bypasses your env var, which makes future key rotations harder to reason about. **Always skip the prompt and rely on `export ANTHROPIC_API_KEY=...` in your shell profile.**
+
+- **Env vars must be exported in the same shell that launches Claude Code.** If you start Claude Code from one terminal and your `export` lines live in `~/.bashrc` but you launched from a zsh session (or vice versa), the plugin won't see the secrets. Use `echo $CADDY_BEARER_TOKEN` and `echo $ANTHROPIC_API_KEY` in the same terminal *before* launching Claude Code to verify they're set.
+
+- **`/caddy:draft` is the only command in v0.1.0.** No `/caddy:settings`, no `/caddy:intake`, no `/caddy:triage`. Those ship in v0.2.0+.
+
+- **Concurrent drafts are not isolated.** If you fire two `/caddy:draft` calls back-to-back without waiting for the first to finish, the second one will queue rather than parallelize cleanly. Wait for the first stream to complete.
+
+- **Auto-update is opt-in.** Marketplace installs pin to the SHA listed in `marketplace.json` at install time. Re-running `/plugin install caddy@meet-caddy` pulls whatever is currently tagged in the marketplace; nothing happens silently in the background.
+
+- **Marketplace URL is not load-bearing.** The public mirror at `github.com/meetcaddy/caddy-plugin` contains only this thin shim. The real Caddy IP (skills, frameworks, prompts, voice tuning) lives on Caddy's private server and is only reachable with a valid `CADDY_BEARER_TOKEN`. Cloning the mirror by itself gets you nothing.
 
 ---
 
@@ -175,3 +194,16 @@ Do **not** include your bearer token or Anthropic API key in support emails. We 
 The plugin ships a small Node.js stdio-to-HTTP proxy at `bin/caddy-mcp-proxy.mjs` (about 100 lines, zero third-party dependencies). The proxy reads `CADDY_BEARER_TOKEN` and `ANTHROPIC_API_KEY` from the shell environment, then forwards each MCP request to Caddy's MCP server at https://caddy-app-tbern75s-projects.vercel.app/api/mcp with those values attached as request headers. SSE streaming responses are parsed and forwarded to stdout line by line. All draft generation happens server-side using Anthropic Claude Sonnet 4.6, streamed back via the MCP `notifications/message` channel. Node.js 18 or higher is required (built-in `fetch`).
 
 Your bearer token authenticates you to Caddy. Your Anthropic key pays for the model call. Caddy stores neither.
+
+---
+
+## Developer mode (local install, for Caddy team only)
+
+If you are working on the plugin source itself rather than consuming the marketplace build, you can install directly from a local checkout:
+
+```sh
+chmod +x ./bin/caddy-mcp-proxy.mjs
+claude --plugin-dir ./
+```
+
+This bypasses the marketplace and runs whatever is on disk. Not for customers. The marketplace install path above is the supported flow.
