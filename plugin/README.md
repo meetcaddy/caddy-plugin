@@ -1,4 +1,4 @@
-# Caddy plugin (v0.1.9)
+# Caddy plugin (v0.2.0)
 
 > **Invite-only v1.0.** Caddy is currently a closed-pilot SaaS for a small group of operators. If you do not have a bearer token from Tucker, you cannot use this plugin yet. Contact hi@meetcaddy.com to request access.
 
@@ -156,6 +156,32 @@ Available settings in v0.1.3:
 ```
 
 **Prerequisite (one-time):** install the upstream `graphify` CLI binary on your machine. See the skill's Prerequisite section for the canonical install commands. If `graphify` is not on your PATH, the skill will attempt to auto-install on first invocation and exit cleanly with a pointer to the install command if that fails.
+
+---
+
+## BASE workspace orientation (optional companion)
+
+BASE (Builder's Automated State Engine) is a workspace orchestration framework: project tracking, decision logs, weekly/daily rituals, drift detection, structured grooming cycles. Once installed it gives Claude Code a durable "this is what my workspace IS" context. Caddy's `/caddy:base-setup` wires BASE's MCP server into a workspace; the BASE skills + slash commands themselves come from the Homebrew tap.
+
+```
+/base:scaffold       # set up BASE in a new workspace
+/base:audit          # deep workspace optimization audit
+/base:groom          # structured grooming cycle (project + decision review)
+/base:status         # current workspace state snapshot
+/caddy:base-setup    # wire base-mcp into THIS workspace (one-time per workspace)
+```
+
+**Prerequisite (one-time per machine):** install the Caddy Homebrew tap and BASE. The `caddy-frameworks` meta-formula bundles BASE + PAUL + SEED + Skillsmith + Aegis in one install:
+
+```
+brew tap meetcaddy/caddy
+brew install caddy-frameworks
+caddy-link
+```
+
+After that, run `/caddy:base-setup` once inside Claude Code from each workspace where you want BASE's `mcp__base-mcp__*` tools available. The setup is idempotent (safe to re-run) and auto-repairs broken `.mcp.json` registrations.
+
+Upstream: `@chrisai/base@3.1.5` by Christopher Kahler (MIT).
 
 ---
 
