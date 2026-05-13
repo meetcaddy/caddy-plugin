@@ -1,4 +1,4 @@
-# Caddy plugin (v0.2.0)
+# Caddy plugin (v0.3.0)
 
 > **Invite-only v1.0.** Caddy is currently a closed-pilot SaaS for a small group of operators. If you do not have a bearer token from Tucker, you cannot use this plugin yet. Contact hi@meetcaddy.com to request access.
 
@@ -182,6 +182,41 @@ caddy-link
 After that, run `/caddy:base-setup` once inside Claude Code from each workspace where you want BASE's `mcp__base-mcp__*` tools available. The setup is idempotent (safe to re-run) and auto-repairs broken `.mcp.json` registrations.
 
 Upstream: `@chrisai/base@3.1.5` by Christopher Kahler (MIT).
+
+---
+
+## CARL rule routing + decision logging (optional companion)
+
+CARL (Context Augmentation & Reinforcement Layer) is a rule-routing + decision-logging framework: it tracks which rules apply to which contexts, logs decisions per domain, and supports staged proposals with operator approval. Once installed, CARL gives Claude Code a durable "what did we already decide and why?" memory layer per workspace. Caddy's `/caddy:carl-setup` wires CARL's MCP server into a workspace; the underlying carl-core package comes from the Homebrew tap.
+
+CARL is **MCP-only** — it ships no slash commands or suite skills, just 30 MCP tools you call by name (or by asking Claude in chat). The starter set (8 v2 tools):
+
+```
+mcp__carl-mcp__carl_v2_log_decision       # log a decision in the current workspace
+mcp__carl-mcp__carl_v2_search_decisions   # find past decisions by domain or text
+mcp__carl-mcp__carl_v2_get_decisions      # list decisions in a domain
+mcp__carl-mcp__carl_v2_list_domains       # see all CARL domains
+mcp__carl-mcp__carl_v2_get_config         # read current config + active rules
+mcp__carl-mcp__carl_v2_stage_proposal     # propose a new rule for approval
+mcp__carl-mcp__carl_v2_approve_proposal   # promote staged proposal to active
+mcp__carl-mcp__carl_v2_get_staged         # see what's pending approval
+```
+
+The remaining 22 tools cover advanced cases: rule CRUD (`add_rule`, `remove_rule`, `replace_rules`), archival, domain creation/toggling, and v1 legacy tools kept for back-compat with existing CARL workspaces from caddy-live installs.
+
+**Prerequisite (one-time per machine):** install the Caddy Homebrew tap — the `caddy-frameworks` meta-formula at v0.3.0 now bundles CARL alongside BASE + PAUL + SEED + Skillsmith + Aegis:
+
+```
+brew tap meetcaddy/caddy
+brew install caddy-frameworks
+caddy-link
+```
+
+After that, run `/caddy:carl-setup` once inside Claude Code from each workspace where you want CARL's `mcp__carl-mcp__*` tools available. The setup is idempotent (safe to re-run) and auto-repairs broken `.mcp.json` registrations. Each workspace gets its own `.carl/` directory (per-project decisions log + sessions).
+
+**Advanced — rule injection into every prompt:** CARL ships a Python `UserPromptSubmit` hook at `$(brew --prefix caddy-carl)/share/caddy-carl/hooks/carl-hook.py`. Register it in `~/.claude/settings.json` if you want active CARL rules injected into every Claude Code prompt automatically. Documented as advanced for v1.0; revisit at v1.1.
+
+Upstream: `carl-core@2.0.2` by Christopher Kahler (MIT). Same upstream author as BASE.
 
 ---
 
