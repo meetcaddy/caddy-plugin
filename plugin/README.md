@@ -1,4 +1,4 @@
-# Caddy plugin (v0.1.8)
+# Caddy plugin (v0.1.9)
 
 > **Invite-only v1.0.** Caddy is currently a closed-pilot SaaS for a small group of operators. If you do not have a bearer token from Tucker, you cannot use this plugin yet. Contact hi@meetcaddy.com to request access.
 
@@ -142,6 +142,20 @@ Caddy ships with a local-only settings command for tuning plugin behavior. Setti
 
 Available settings in v0.1.3:
 - `connector` — values: `anthropic-connector` or `copy-paste`. Optional. Future anchor skills (intake, triage, etc.) will branch on this; `/caddy:draft` does not read it in v0.1.3.
+
+---
+
+## Knowledge graph (optional companion)
+
+`/caddy:graphify` builds a navigable knowledge graph from any folder of code, docs, papers, or images and writes three outputs to `graphify-out/`: interactive HTML, queryable JSON, and a plain-language report. Useful for understanding a new codebase, a research corpus, or a client's document pile before you touch anything.
+
+```
+/caddy:graphify <path>            # full pipeline on a folder
+/caddy:graphify query "<question>" # ask a question of the existing graph
+/caddy:graphify explain "<concept>" # plain-language explanation of a node
+```
+
+**Prerequisite (one-time):** install the upstream `graphify` CLI binary on your machine. See the skill's Prerequisite section for the canonical install commands. If `graphify` is not on your PATH, the skill will attempt to auto-install on first invocation and exit cleanly with a pointer to the install command if that fails.
 
 ---
 
