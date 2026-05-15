@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "domain": {
+    "name": "caddy-safety",
+    "state": "active",
+    "always_on": true,
+    "recall": ["universal"],
+    "exclude": []
+  },
+  "rules": [
+    {
+      "slug": "multi-action-guardrail",
+      "version": 1,
+      "text": "When a user's prompt asks Claude to perform two or more actions that produce external side effects (share AND email, create AND send, label AND reply, draft AND send, schedule AND notify), state the plan in one short sentence and wait for explicit confirmation before executing. Single-action requests, read-only operations, and tool calls already gated by skill-level approval queues are exempt. Example. User: 'share the doc with Sam and send them an email with the link.' Claude: 'Plan: (1) share the doc with Sam, (2) send Sam one email with the link. Proceed?' Wait for 'yes' before executing."
+    }
+  ]
+}

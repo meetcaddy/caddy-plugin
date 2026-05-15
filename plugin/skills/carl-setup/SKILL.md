@@ -1,5 +1,5 @@
 ---
-description: "Wire CARL's carl-mcp server into the current Claude Code workspace. Use after installing caddy-frameworks via Homebrew, before any session where you want CARL rule routing or decision logging tools. One-time per workspace; idempotent (safe to re-run for repair). Triggers: 'set up carl', 'wire carl-mcp', 'carl-mcp failed', 'carl-mcp not running', '.mcp.json missing carl-mcp', or any carl-mcp tool failing with missing-tool errors."
+description: "Wire CARL's carl-mcp server into the current Claude Code workspace, seed the Caddy-managed safety rules domain, and register the CARL UserPromptSubmit hook so rules inject into every prompt. Use after installing caddy-frameworks via Homebrew, before any session where you want CARL rule routing, decision logging tools, or safety-rule enforcement. One-time per workspace; idempotent (safe to re-run for repair). Triggers: 'set up carl', 'wire carl-mcp', 'carl-mcp failed', 'carl-mcp not running', '.mcp.json missing carl-mcp', missing caddy-safety rules, multi-action guardrail not firing, or any carl-mcp tool failing with missing-tool errors."
 ---
 
 # /caddy:carl-setup
@@ -31,6 +31,8 @@ For the workspace where Claude Code was launched (the directory containing the p
 3. **Seed the workspace template** by copying `<carl-pkg>/carl-template/carl.json` into `<workspace>/.carl/carl.json` (the rules + domains + config file) and creating an empty `<workspace>/.carl/sessions/` directory. Only seeds if `<workspace>/.carl/carl.json` doesn't already exist (idempotent; preserves any prior CARL state).
 4. **Run `npm install`** in the new `<workspace>/.carl/carl-mcp/` to fetch `@modelcontextprotocol/sdk`.
 5. **Register the server** in `<workspace>/.mcp.json` with an **absolute path** to `<workspace>/.carl/carl-mcp/index.js`. Absolute paths are more robust than relative because Claude Code's CWD isn't guaranteed to match the workspace root (subdir launches, symlinked workspaces).
+6. **Seed the Caddy-managed `caddy-safety` domain** into `<workspace>/.carl/carl.json` from `carl-rules/caddy-safety.json` shipped with this skill. Uses `lib/seed-carl-domain.py` so the seeder remains idempotent: customer-edited rules are preserved (DIVERGED), and unedited rules pick up upstream Caddy revisions automatically. Sidecar state lives at `<workspace>/.carl/caddy-carl-state.json` to track what's Caddy-shipped vs customer-modified.
+7. **Register the CARL UserPromptSubmit hook** in `~/.claude/settings.json` pointing at `<carl-pkg>/hooks/carl-hook.py`. This is what makes seeded rules actually inject into every Claude Code prompt. Idempotent (skips if our entry is already present). One-time backup of pre-existing `~/.claude/settings.json` is written to `~/.claude/settings.json.pre-caddy-carl.bak` (preserves original snapshot across re-runs).
 
 The `.mcp.json` mutation handles three sub-cases idempotently:
 
@@ -144,8 +146,108 @@ JSON_EOF
   echo "OK  $WORKSPACE_MCP_JSON created with carl-mcp registration"
 fi
 
+# Step 6: seed the Caddy-managed caddy-safety domain (multi-action guardrail rule)
+#
+# This skill ships two files alongside SKILL.md inside the plugin install:
+#   carl-rules/caddy-safety.json   (rule source-of-truth; schema_version 1)
+#   lib/seed-carl-domain.py        (idempotent seeder)
+#
+# Claude: before running this block, resolve SKILL_DIR to the absolute path
+# of THIS skill's directory (the directory containing this SKILL.md plus
+# carl-rules/ and lib/ siblings). Typical plugin install location is
+# ~/.claude/plugins/<marketplace>/plugins/caddy/plugin/skills/carl-setup/;
+# the exact path depends on the customer's Claude Code plugin install.
+# If you cannot locate the skill directory, skip steps 6 and 7 and emit a
+# WARN line. Steps 1-5 above will still have completed successfully.
+
+CADDY_RULES_FILE="$SKILL_DIR/carl-rules/caddy-safety.json"
+CADDY_SEEDER="$SKILL_DIR/lib/seed-carl-domain.py"
+CADDY_CARL_JSON="$CARL_WORKSPACE_DIR/carl.json"
+CADDY_STATE_FILE="$CARL_WORKSPACE_DIR/caddy-carl-state.json"
+
+if [[ -f "$CADDY_SEEDER" ]] && [[ -f "$CADDY_RULES_FILE" ]]; then
+  if "$PYTHON_BIN" "$CADDY_SEEDER" \
+      --rules-file "$CADDY_RULES_FILE" \
+      --carl-json "$CADDY_CARL_JSON" \
+      --state-file "$CADDY_STATE_FILE"; then
+    echo "OK  caddy-safety domain seeded into $CADDY_CARL_JSON"
+  else
+    echo "FAIL caddy-safety seed (seeder exited non-zero). Inspect $CADDY_CARL_JSON manually."
+  fi
+else
+  echo "WARN skill bundle missing carl-rules/caddy-safety.json or lib/seed-carl-domain.py; skipping rule seed"
+  echo "     (steps 1-5 succeeded; carl-mcp still wired, but caddy-safety domain not seeded)"
+fi
+
+# Step 7: register CARL UserPromptSubmit hook in ~/.claude/settings.json
+#
+# Without this, seeded rules sit in carl.json but never inject into prompts.
+# Idempotent: detects existing carl-hook.py registration and skips if present.
+# One-time backup of pre-existing settings.json is preserved across re-runs.
+
+CARL_HOOK_PATH="$CARL_PKG/share/caddy-carl/hooks/carl-hook.py"
+CLAUDE_SETTINGS="$HOME/.claude/settings.json"
+CLAUDE_SETTINGS_BAK="$HOME/.claude/settings.json.pre-caddy-carl.bak"
+
+if [[ -f "$CARL_HOOK_PATH" ]]; then
+  # Backup once, preserving the true pre-Caddy snapshot across re-runs.
+  if [[ -f "$CLAUDE_SETTINGS" ]] && [[ ! -f "$CLAUDE_SETTINGS_BAK" ]]; then
+    cp "$CLAUDE_SETTINGS" "$CLAUDE_SETTINGS_BAK"
+    echo "OK  ~/.claude/settings.json backed up to $CLAUDE_SETTINGS_BAK"
+  fi
+
+  HOOK_REG_RESULT="$("$PYTHON_BIN" -c "
+import json, os, pathlib, sys
+settings_path = pathlib.Path('$CLAUDE_SETTINGS')
+hook_path = '$CARL_HOOK_PATH'
+settings_path.parent.mkdir(parents=True, exist_ok=True)
+if settings_path.exists():
+    try:
+        settings = json.loads(settings_path.read_text())
+    except json.JSONDecodeError:
+        print('invalid-json')
+        sys.exit(1)
+else:
+    settings = {}
+hooks = settings.setdefault('hooks', {})
+ups = hooks.setdefault('UserPromptSubmit', [])
+already = False
+for entry in ups:
+    for h in entry.get('hooks', []):
+        cmd = h.get('command', '')
+        if cmd.endswith('carl-hook.py') or hook_path in cmd:
+            already = True
+            break
+    if already:
+        break
+if already:
+    print('kept')
+else:
+    ups.append({
+        'matcher': '*',
+        'hooks': [{'type': 'command', 'command': 'python3 ' + hook_path}],
+        'description': 'Caddy: CARL UserPromptSubmit hook (injects active rules from <workspace>/.carl/carl.json into every prompt). Bypass: remove this entry.',
+        'id': 'user-prompt-submit:caddy-carl-hook'
+    })
+    tmp = settings_path.with_suffix(settings_path.suffix + '.tmp')
+    tmp.write_text(json.dumps(settings, indent=2))
+    os.replace(tmp, settings_path)
+    print('merged')
+")"
+  case "$HOOK_REG_RESULT" in
+    merged)       echo "OK  carl-hook.py registered in $CLAUDE_SETTINGS" ;;
+    kept)         echo "SKIP carl-hook.py already registered in $CLAUDE_SETTINGS" ;;
+    invalid-json) echo "FAIL $CLAUDE_SETTINGS is not valid JSON; hook registration skipped. Restore from $CLAUDE_SETTINGS_BAK if needed." ;;
+    *)            echo "FAIL hook registration: unexpected result '$HOOK_REG_RESULT'" ;;
+  esac
+else
+  echo "WARN $CARL_HOOK_PATH not found; seeded CARL rules will NOT auto-inject"
+  echo "     Reinstall: brew reinstall caddy-carl"
+fi
+
 echo ""
 echo "Done. Restart Claude Code (or run /mcp) to load carl-mcp in this workspace."
+echo "      Seeded caddy-safety rules will activate on the next prompt submission."
 echo ""
 echo "Starter tools (8 of CARL's 30; v2 surface — see plugin README for full set):"
 echo "  carl_v2_log_decision        carl_v2_search_decisions"
@@ -178,10 +280,12 @@ The remaining 22 tools (v1 legacy + v2 advanced: add_rule, remove_rule, replace_
 - **`carl-mcp ✗ failed` after restart:** check `<workspace>/.carl/carl-mcp/index.js` exists and is readable. Check `<workspace>/.carl/carl-mcp/node_modules/@modelcontextprotocol/sdk/` exists. If either is missing, re-run this skill.
 - **`.mcp.json` already had a broken carl-mcp entry:** this skill auto-repairs (case b). Re-run to fix.
 - **Multiple workspaces:** run once per workspace where you want carl-mcp. Each gets its own `.carl/` directory.
-- **CARL rules not injecting into prompts:** that's the UserPromptSubmit hook (`hooks/carl-hook.py` in the tap), which is separate from the MCP server. Hook registration in `~/.claude/settings.json` is documented as advanced for v1.0.
+- **CARL rules not injecting into prompts:** this skill auto-registers `carl-hook.py` in `~/.claude/settings.json` (Step 7). If it didn't fire, check whether the entry is present in your settings file and that `python3 $(brew --prefix caddy-carl)/share/caddy-carl/hooks/carl-hook.py` resolves to a real file. To force a re-register, remove the entry and re-run this skill.
 
 ## Notes
 
-- This skill is **idempotent**: safe to run multiple times. Sub-cases (b repair) and (c keep) handle re-runs cleanly. Workspace template seeding only runs on first init (preserves prior CARL state).
-- The skill **does not write outside the current workspace**. No `~/.claude/` mutations, no `~/.carl/` mutations, no global state changes. Customer-data-local promise preserved.
-- carl-mcp dependencies (`@modelcontextprotocol/sdk`) are installed locally to the workspace via `npm install`. No global npm pollution.
+- This skill is **idempotent**: safe to run multiple times. Sub-cases (b repair) and (c keep) handle re-runs cleanly. Workspace template seeding only runs on first init (preserves prior CARL state). The caddy-safety domain seed (Step 6) preserves customer-edited rules and only updates unedited Caddy-shipped rules when the upstream version bumps. The hook registration (Step 7) skips if already registered.
+- The skill writes to two locations:
+  - `<workspace>/.carl/` (per-workspace CARL state, including the Caddy sidecar at `<workspace>/.carl/caddy-carl-state.json`)
+  - `~/.claude/settings.json` (single entry: UserPromptSubmit hook for carl-hook.py — required for seeded rules to inject into prompts). A one-time backup is preserved at `~/.claude/settings.json.pre-caddy-carl.bak` before the first merge.
+- No `~/.carl/` (global) mutations. No npm global pollution. carl-mcp dependencies (`@modelcontextprotocol/sdk`) are installed locally to the workspace via `npm install`.
