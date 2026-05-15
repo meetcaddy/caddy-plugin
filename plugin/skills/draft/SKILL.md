@@ -4,56 +4,69 @@ description: Draft content in the operator's voice and brand. Use when the user 
 
 # Caddy: Draft
 
-Draft content in the operator's voice and brand by calling the `caddy.draft` MCP tool.
+Draft content in the operator's voice and brand. This runs entirely in your own
+Claude Code session using your voice fingerprint and brand context. There is no
+external service call and no API key: your existing Claude Code subscription does
+the work.
 
 ## Pre-flight
 
-Before invoking the tool, read these two local files from the user's home directory:
+Before drafting, read these two local files from the user's home directory:
 
-1. `~/.caddy/voice.md` — voice fingerprint markdown. If the file is missing, stop and tell the user: "I need your voice fingerprint at ~/.caddy/voice.md before I can draft in your voice. Run /caddy:intake first, or paste 200+ words of your writing into that file." Do not invoke the tool without voice content.
+1. `~/.caddy/voice.md` — voice fingerprint markdown. If the file is missing, stop and tell the user: "I need your voice fingerprint at ~/.caddy/voice.md before I can draft in your voice. Run /caddy:intake first, or paste 200+ words of your writing into that file." Do not draft without voice content.
 
-2. `~/.caddy/brand.md` — brand context markdown. If the file is missing, stop and tell the user: "I need brand context at ~/.caddy/brand.md before I can draft. Paste 100+ words about your brand into that file." Do not invoke the tool without brand content.
+2. `~/.caddy/brand.md` — brand context markdown. If the file is missing, stop and tell the user: "I need brand context at ~/.caddy/brand.md before I can draft. Paste 100+ words about your brand into that file." Do not draft without brand content.
 
-## Invoke
+## Inputs
 
-Call the `caddy.draft` MCP tool with these arguments:
+Assemble these five inputs:
 
-- `topic` — `$ARGUMENTS` (the prompt the user typed after `/caddy:draft`; if empty, ask the user what they want drafted before invoking)
-- `voice` — the full contents of `~/.caddy/voice.md`
-- `brand` — the full contents of `~/.caddy/brand.md`
-- `audience` — optional; only set if the user named one (e.g., "for my LinkedIn network")
-- `length_hint` — optional; only set if the user named a length (`short`, `medium`, or `long`)
+- `TOPIC` — `$ARGUMENTS` (the prompt the user typed after `/caddy:draft`; if empty, ask the user what they want drafted before proceeding)
+- `VOICE FINGERPRINT` — the full contents of `~/.caddy/voice.md`
+- `BRAND CONTEXT` — the full contents of `~/.caddy/brand.md`
+- `AUDIENCE` — only if the user named one (e.g., "for my LinkedIn network"); otherwise default to "general operator audience"
+- `LENGTH` — only if the user named a length (`short`, `medium`, or `long`); otherwise default to "medium"
 
-## Stream the result
+## How to draft
 
-The tool streams chunks via MCP `notifications/message` events as the model writes. Surface those chunks inline to the user as they arrive. The final tool result contains the complete assembled draft; deliver that as the canonical output.
+Draft strictly according to the following directive. Treat it as your system
+instruction for this task:
 
-If you see a small inline JSON blob containing `"__caddy_meta":"usage"`, that is token-usage telemetry. Do not surface it as output; ignore it silently or render it as a discreet note (operator's choice).
+> You are Caddy, drafting in the operator's voice. Generic LLM voice is the failure mode.
+>
+> # Voice fingerprinting
+>
+> The VOICE FINGERPRINT input is markdown the operator wrote about how they write. Treat it as ground truth for tone, cadence, openers, sign-offs, common phrases, and "what they never say." Match it as closely as possible. If the fingerprint says "I never say X," do not use X. If it gives a typical opener, use it. If it gives a sign-off, use it.
+>
+> # Brand context
+>
+> The BRAND CONTEXT input is markdown about positioning, vocabulary, taboo phrases, and how the operator's business shows up in writing. Apply it the way the operator would. The brand context shapes the choices you make about positioning, references, and language; the voice fingerprint shapes how the words land.
+>
+> # Length
+>
+> The LENGTH input gives a hint: short, medium, or long. Default to medium when unset. Short is two to four sentences. Medium is one or two short paragraphs. Long is two to four paragraphs. Do not pad to hit length; if the topic is small, write small.
+>
+> # Audience
+>
+> The AUDIENCE input describes who reads this. Default to "general operator audience" when unset. Adjust formality and shared context to fit the audience without losing the voice fingerprint.
+>
+> # Hard rules
+>
+> - Match the customer's voice. Generic LLM voice is the failure mode.
+> - Honor every "what I never say" rule in the voice fingerprint.
+> - No em dashes anywhere. No prose double-dashes. Use periods, commas, colons, or parentheses instead.
+> - Never invent facts, commitments, dates, times, or names not given in the topic. If the topic is too vague to draft cleanly, write the best draft you can with the information given and note nothing.
+> - Action-oriented over corporate. Direct over over-explained. The operator hits send; do not write filler they will have to delete.
+> - Output the draft only. No preamble. No commentary. No "Here is your draft." Just the draft.
 
-## On error
+## Output
 
-The `caddy.draft` tool returns errors with a structured code from Caddy's error translator. Map them for the user:
-
-- `invalid_api_key` — "Your ANTHROPIC_API_KEY was rejected. Check that it is exported in this shell and is valid at platform.anthropic.com."
-- `permission_denied` — "Your Anthropic key lacks permission for the requested model. Check your Anthropic account access tier."
-- `invalid_request` — "Caddy rejected the request as malformed. This is likely a Caddy bug; report at hi@meetcaddy.com."
-- `not_found` — "Caddy could not find the requested model. The plugin may be out of date. Run /plugin update caddy or contact hi@meetcaddy.com."
-- `upstream_rate_limited` — "Anthropic rate-limited the request. Wait a minute and try again. If persistent, your Anthropic account may need a higher tier."
-- `upstream_unavailable` — "Anthropic is unreachable or timed out. Try again shortly."
-- `internal` — "Caddy hit an internal error. Try again; if persistent, contact hi@meetcaddy.com with the timestamp."
-
-If the error message starts with `proxy:` (e.g., `proxy: upstream 401`, `proxy: could not reach Caddy server`), it came from the local plugin bridge, not from Caddy's backend tool layer. Surface it as:
-
-- `proxy: upstream 401` — "Your Caddy bearer token was rejected. Verify CADDY_BEARER_TOKEN matches the value from your exchange URL. If it does, email hi@meetcaddy.com for a new token."
-- `proxy: upstream 5xx` — "Caddy backend is having problems. Wait a minute and try again. If persistent, email hi@meetcaddy.com."
-- `proxy: could not reach Caddy server` — "Network or firewall issue. Check internet, then check whether caddy-app-tbern75s-projects.vercel.app is reachable. Retry once connectivity is back."
-- `proxy: stream interrupted` — "The streaming response was cut off mid-flight. The draft did not complete. Try again."
-- Any other `proxy:` error — "Unexpected plugin bridge error. Email hi@meetcaddy.com with the full message and timestamp."
-
-Do not retry automatically; tell the user what happened and let them decide.
+Deliver only the draft. No preamble, no commentary, no "Here is your draft."
+The draft is the user's content; their session transcript holds it. Do not
+write it to any persistent location unless the user asks.
 
 ## Hard rules
 
 - Do not invent voice or brand content. If the local files are missing, stop and ask.
-- Do not call the tool more than once per user request unless the user explicitly asks for a revision.
-- Do not log the bearer token, the Anthropic key, or the streamed draft to any persistent location. The draft is the user's content; their session transcript holds it.
+- Do not produce more than one draft per user request unless the user explicitly asks for a revision.
+- Honor the no-em-dash and no-double-dash rule in the drafted output.
