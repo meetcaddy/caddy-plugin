@@ -6,7 +6,9 @@
 // still active on v2.0.7x and v2.1.x). The env-block DOES expand. So
 // the plugin declares an `env` block with the secrets, this script
 // reads them at runtime, and posts to Caddy's /api/mcp endpoint with
-// the proper Authorization + X-Caddy-Anthropic-Key headers attached.
+// the proper Authorization header attached. Caddy's /api/mcp is
+// bearer-only single-billing (no BYOK, no Anthropic call), so the
+// bearer token is the only secret this proxy needs.
 //
 // Why not use a third-party tool: mcp-remote bakes OAuth discovery
 // into every connect, which crashes against bearer-token-only servers.
@@ -14,27 +16,21 @@
 // 100-line proxy avoids that mismatch and has zero supply-chain dep.
 //
 // Logging discipline: stderr lines are visible to Claude Code's plugin
-// debugging UI. NEVER log the bearer token, the Anthropic key, the
-// request body, or response body. Only log error categories.
+// debugging UI. NEVER log the bearer token, the request body, or
+// response body. Only log error categories.
 
 import { createInterface } from 'node:readline'
 
 const BEARER = process.env.CADDY_BEARER_TOKEN
-const KEY = process.env.ANTHROPIC_API_KEY
 const URL = process.env.CADDY_MCP_URL || 'https://caddy-app-tbern75s-projects.vercel.app/api/mcp'
 
 if (!BEARER) {
   console.error('CADDY_BEARER_TOKEN not set. Export it in the shell that launched Claude Code, then restart. See plugin/README.md for the bearer-token issuance flow.')
   process.exit(1)
 }
-if (!KEY) {
-  console.error('ANTHROPIC_API_KEY not set. Export it in the shell that launched Claude Code, then restart. Get a key at https://platform.anthropic.com')
-  process.exit(1)
-}
 
 const HEADERS = {
   'Authorization': `Bearer ${BEARER}`,
-  'X-Caddy-Anthropic-Key': KEY,
   'Content-Type': 'application/json',
   'Accept': 'application/json, text/event-stream',
 }

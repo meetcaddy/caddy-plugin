@@ -18,11 +18,11 @@ If you do not have Claude Code yet, install it first: see https://docs.claude.co
 
 ## What you need
 
-Two long-lived secrets, both exported as environment variables in the shell that launches Claude Code:
+One long-lived secret, exported as an environment variable in the shell that launches Claude Code:
 
 1. **`CADDY_BEARER_TOKEN`** — your Caddy account token. Issued via a one-time exchange URL Tucker sends after invite approval. The URL is good for a single click; you redeem it to receive the bearer token in your browser, then paste the token into your shell profile (or `.env`). Treat the bearer token like a password.
 
-2. **`ANTHROPIC_API_KEY`** — your own Anthropic API key from https://platform.anthropic.com. Caddy uses BYOK (bring your own key); you pay Anthropic directly for the model usage, and Caddy never stores this key on its servers (per-request only).
+Caddy is single-billing: drafting and operator-rhythm work run inside your own Claude Code session on your existing Claude subscription. There is no separate Anthropic API key to obtain, set, or pay for.
 
 ---
 
@@ -32,22 +32,20 @@ Two long-lived secrets, both exported as environment variables in the shell that
 
 > **TextEdit warning:** before editing `~/.zshrc` or your voice/brand files in TextEdit, turn off Smart Quotes (Edit → Substitutions → uncheck Smart Quotes). TextEdit otherwise silently converts straight `"` to curly `"` which breaks shell config files and degrades voice fingerprint matching.
 
-1. Export your two secrets in your shell profile so every Claude Code session inherits them:
+1. Export your bearer token in your shell profile so every Claude Code session inherits it:
 
    ```sh
    # in ~/.zshrc or ~/.bashrc
    export CADDY_BEARER_TOKEN="caddy_..."        # from Tucker's exchange URL
-   export ANTHROPIC_API_KEY="sk-ant-..."         # from platform.anthropic.com
    ```
 
    Reload your shell: `source ~/.zshrc` (or close and reopen the terminal).
 
-   Verify both are set:
+   Verify it is set:
    ```sh
    echo "Bearer: ${CADDY_BEARER_TOKEN:0:8}..."
-   echo "Anthropic: ${ANTHROPIC_API_KEY:0:8}..."
    ```
-   Both should print something (the `:0:8` only shows the first 8 chars; full token isn't echoed).
+   It should print something (the `:0:8` only shows the first 8 chars; full token isn't echoed).
 
 2. Create your local voice + brand markdown (the plugin reads these on every draft):
 
@@ -66,7 +64,7 @@ Two long-lived secrets, both exported as environment variables in the shell that
 
    The first command registers Caddy's plugin catalog. The second downloads the plugin into your Claude Code session (sparse clone of the `plugin/` folder, pinned to the v0.1.0 commit).
 
-4. **When Claude Code prompts you about an API key for the MCP server, answer "No"** (or hit Enter to skip). Caddy reads `ANTHROPIC_API_KEY` from your shell environment directly. If you paste it into the prompt, Claude Code stores it in plugin config instead, which can confuse rotation later. See "Known limitations" below for context.
+4. **Single-billing:** Caddy runs entirely inside your own Claude Code session on your existing Claude subscription. If Claude Code prompts you about an API key for the MCP server, just hit Enter to skip — Caddy does not need one.
 
 5. Test:
 
@@ -222,7 +220,7 @@ Upstream: `carl-core@2.0.2` by Christopher Kahler (MIT). Same upstream author as
 
 ## Secret hygiene
 
-**Do NOT** paste `CADDY_BEARER_TOKEN` or `ANTHROPIC_API_KEY` into:
+**Do NOT** paste `CADDY_BEARER_TOKEN` into:
 - Any chat interface, including Claude.ai conversations or other AI assistants
 - Any git repository (even private; rotate immediately if pushed)
 - Any screenshot for support (redact before sharing)
@@ -230,7 +228,7 @@ Upstream: `carl-core@2.0.2` by Christopher Kahler (MIT). Same upstream author as
 
 If you have done any of the above, treat the affected token as compromised and rotate it immediately (see "Credential lifecycle" below).
 
-The Caddy bearer token is long-lived; it does not expire on a schedule. The Anthropic API key is long-lived too. Both must be rotated manually if compromised.
+The Caddy bearer token is long-lived; it does not expire on a schedule. It must be rotated manually if compromised.
 
 ---
 
@@ -337,12 +335,10 @@ Do **not** include your bearer token or Anthropic API key in support emails. We 
 
 A few rough edges to be aware of. None are blockers, but they affect how you'll interact with the plugin day to day.
 
-- **Claude Code may prompt about your `ANTHROPIC_API_KEY` when it launches.** The prompt typically reads "Detected `ANTHROPIC_API_KEY` in environment. Use this for your Claude Code session?" with Yes/No options.
-  - **If you're on Claude Max (subscription):** answer **No**. Your env var stays available to the Caddy plugin's proxy regardless of what Claude Code uses for itself, and saying Yes would route Claude Code's own usage through your API key, which double-bills against your Max sub.
-  - **If you're on pay-per-token Anthropic API only (no Max):** answer **Yes**. That tells Claude Code to use your API key for its own usage too. Either way, Caddy still reads the env var directly via the proxy.
-  - **If after answering "No" you see `Please run /login`:** Claude Code's OAuth session is missing or expired on this Mac (common on a fresh install). Type `/login` inside Claude Code, complete the browser sign-in, and retry. This is purely a Claude Code thing; the Caddy plugin is unaffected.
+- **Caddy runs on your own Claude session — no Anthropic API key.** You do not set or pay for an `ANTHROPIC_API_KEY`. If Claude Code ever asks about an API key for the MCP server, hit Enter to skip; Caddy does not need one.
+  - **If you see `Please run /login`:** Claude Code's own sign-in is missing or expired (common on a fresh install). Type `/login` inside Claude Code, complete the browser sign-in, and retry. This is purely a Claude Code thing; the Caddy plugin is unaffected.
 
-- **Env vars must be exported in the same shell that launches Claude Code.** If you start Claude Code from one terminal and your `export` lines live in `~/.bashrc` but you launched from a zsh session (or vice versa), the plugin won't see the secrets. Use `echo $CADDY_BEARER_TOKEN` and `echo $ANTHROPIC_API_KEY` in the same terminal *before* launching Claude Code to verify they're set.
+- **Env vars must be exported in the same shell that launches Claude Code.** If you start Claude Code from one terminal and your `export` lines live in `~/.bashrc` but you launched from a zsh session (or vice versa), the plugin won't see the secrets. Use `echo $CADDY_BEARER_TOKEN` in the same terminal *before* launching Claude Code to verify it's set.
 
 - **`/caddy:draft`, `/caddy:settings`, `/caddy:intake`, `/caddy:triage`, `/caddy:start-of-day`, `/caddy:prep`, and `/caddy:followup` are ALL shipped as of v0.1.8.** That's the full v1.0 anchor skills set. v1.1+ ports the remaining 38+ skills.
 
