@@ -12,7 +12,9 @@ This skill replicates Stage 5a of the caddy-live customer install (the proven wo
 
 ## Prerequisite
 
-You must have `caddy-carl` installed via Homebrew (it ships the carl-mcp source files):
+You must have `caddy-carl` installed via the OS package manager (it ships the carl-mcp source files), plus Python 3 (the seeder and the CARL hook are Python).
+
+**macOS (Homebrew):**
 
 ```bash
 brew tap meetcaddy/caddy
@@ -20,19 +22,32 @@ brew install caddy-frameworks    # bundles caddy-carl alongside BASE + PAUL + SE
 caddy-link                       # symlinks BASE/PAUL/SEED/Skillsmith/Aegis into ~/.claude/
 ```
 
-CARL is MCP-only (ships no slash commands or suite skill), so `caddy-link` doesn't create any `~/.claude/commands/carl/` symlinks. After `caddy-link`, CARL's source should be readable at `$(brew --prefix caddy-carl)/share/caddy-carl/mcp/`.
+macOS ships `python3` system-wide, so no extra Python step is needed. After `caddy-link`, CARL's source is readable at `$(brew --prefix caddy-carl)/share/caddy-carl/mcp/`.
+
+**Windows (Scoop):**
+
+```powershell
+scoop bucket add caddy https://github.com/meetcaddy/scoop-caddy
+scoop install caddy-frameworks   # bundles caddy-carl alongside BASE + PAUL + SEED + Skillsmith + Aegis
+scoop install python             # required: the CARL seeder + hook are Python 3
+caddy-link                       # junctions BASE/PAUL/SEED/Skillsmith/Aegis into %USERPROFILE%\.claude\
+```
+
+Windows has no system `python3`, and the bare name `python3` is hijacked by a Microsoft Store alias, so this skill resolves Scoop's `python.exe` by absolute path rather than trusting PATH. After the Scoop install, CARL's source is readable at `<scoop>\apps\caddy-carl\current\share\caddy-carl\mcp\`.
+
+CARL is MCP-only (ships no slash commands or suite skill), so `caddy-link` doesn't create any `commands/carl/` symlinks on either OS.
 
 ## What this skill does
 
 For the workspace where Claude Code was launched (the directory containing the project files):
 
-1. **Locate the CARL source** at `$(brew --prefix caddy-carl)/share/caddy-carl/` (Cellar path; resolved at runtime so `brew upgrade caddy-carl` automatically picks up new versions).
+1. **Locate the CARL source** at the package prefix's `share/caddy-carl/` (macOS: `$(brew --prefix caddy-carl)/share/caddy-carl/`; Windows: `<scoop>\apps\caddy-carl\current\share\caddy-carl\`). Resolved at runtime so a package upgrade automatically picks up new versions.
 2. **Copy the MCP server** from `<carl-pkg>/mcp/` into `<workspace>/.carl/carl-mcp/`. carl-mcp's `index.js` uses `path.resolve(__dirname, '../..')` for workspace resolution, so it must live exactly at `<workspace>/.carl/carl-mcp/index.js`.
 3. **Seed the workspace template** by copying `<carl-pkg>/carl-template/carl.json` into `<workspace>/.carl/carl.json` (the rules + domains + config file) and creating an empty `<workspace>/.carl/sessions/` directory. Only seeds if `<workspace>/.carl/carl.json` doesn't already exist (idempotent; preserves any prior CARL state).
 4. **Run `npm install`** in the new `<workspace>/.carl/carl-mcp/` to fetch `@modelcontextprotocol/sdk`.
 5. **Register the server** in `<workspace>/.mcp.json` with an **absolute path** to `<workspace>/.carl/carl-mcp/index.js`. Absolute paths are more robust than relative because Claude Code's CWD isn't guaranteed to match the workspace root (subdir launches, symlinked workspaces).
 6. **Seed the Caddy-managed `caddy-safety` domain** into `<workspace>/.carl/carl.json` from `carl-rules/caddy-safety.json` shipped with this skill. Uses `lib/seed-carl-domain.py` so the seeder remains idempotent: customer-edited rules are preserved (DIVERGED), and unedited rules pick up upstream Caddy revisions automatically. Sidecar state lives at `<workspace>/.carl/caddy-carl-state.json` to track what's Caddy-shipped vs customer-modified.
-7. **Register the CARL UserPromptSubmit hook** in `~/.claude/settings.json` pointing at `<carl-pkg>/hooks/carl-hook.py`. This is what makes seeded rules actually inject into every Claude Code prompt. Idempotent (skips if our entry is already present). One-time backup of pre-existing `~/.claude/settings.json` is written to `~/.claude/settings.json.pre-caddy-carl.bak` (preserves original snapshot across re-runs).
+7. **Register the CARL UserPromptSubmit hook** in the Claude Code `settings.json` (macOS `~/.claude/settings.json`; Windows `%USERPROFILE%\.claude\settings.json`) pointing at `<carl-pkg>/hooks/carl-hook.py`. The registered command is `python3 <hook>` on macOS and `"<abs python.exe>" "<abs hook>"` on Windows (absolute paths dodge the Microsoft Store `python3` alias). This is what makes seeded rules actually inject into every Claude Code prompt. Idempotent (skips if our entry is already present). One-time backup of the pre-existing `settings.json` is written alongside it as `settings.json.pre-caddy-carl.bak` (preserves original snapshot across re-runs).
 
 The `.mcp.json` mutation handles three sub-cases idempotently:
 
@@ -44,19 +59,77 @@ The `.mcp.json` mutation handles three sub-cases idempotently:
 
 Determine the workspace root first. By default it's the current working directory; if the user is in a subdir, they should `cd` to the project root before running the skill (or pass the workspace path explicitly).
 
+This block runs in bash on both OSes (on Windows that is the Git Bash that Claude Code uses). Only the **CARL source location** and the **Python interpreter** differ by OS; everything after the resolution preamble is shared.
+
 ```bash
 WORKSPACE="${WORKSPACE:-$(pwd)}"
-CARL_PKG="$(brew --prefix caddy-carl 2>/dev/null)"
 CARL_WORKSPACE_DIR="$WORKSPACE/.carl"
 CARL_MCP_DIR="$CARL_WORKSPACE_DIR/carl-mcp"
 WORKSPACE_MCP_JSON="$WORKSPACE/.mcp.json"
 
-# Sanity: caddy-carl must be installed via brew
+# --- OS-aware resolution preamble -------------------------------------------
+# Resolves three things per-OS:
+#   CARL_PKG    : install prefix; CARL source lives at $CARL_PKG/share/caddy-carl/
+#   PYTHON_BIN  : the Python 3 used for the .mcp.json merge, the seeder, and
+#                 the settings.json hook merge (executed by THIS skill)
+#   to_persist(): emits the form of a path that gets WRITTEN INTO a config
+#                 file (.mcp.json args, settings.json hook command) and later
+#                 executed by node / the Claude Code hook runner. On macOS the
+#                 bash path is already native. On Windows the bash path is an
+#                 MSYS path (/c/Users/...) that node and the hook runner do
+#                 NOT understand, so it must be converted to a Windows path.
+#                 Forward-slash mixed form (cygpath -m: C:/Users/...) is used
+#                 so no JSON backslash-escaping is needed and node accepts it.
+case "$(uname -s)" in
+  Darwin)
+    CARL_PKG="$(brew --prefix caddy-carl 2>/dev/null)"
+    PYTHON_BIN="$(command -v python3)"
+    CLAUDE_DIR="$HOME/.claude"                          # $HOME is reliable on macOS
+    to_persist() { printf '%s' "$1"; }                 # identity on macOS
+    HOOK_CMD_FOR() { printf 'python3 %s' "$1"; }        # byte-identical to prior versions
+    PKG_HINT="brew tap meetcaddy/caddy && brew install caddy-frameworks"
+    PY_HINT="python3 ships with macOS"
+    ;;
+  MINGW*|MSYS*|CYGWIN*)
+    # Scoop user install root: honor $SCOOP, else %USERPROFILE%\scoop.
+    SCOOP_WIN="${SCOOP:-$USERPROFILE\\scoop}"
+    SCOOP_ROOT="$(cygpath -u "$SCOOP_WIN" 2>/dev/null || printf '%s' "$HOME/scoop")"
+    CARL_PKG="$SCOOP_ROOT/apps/caddy-carl/current"
+    # Scoop python.exe (absolute; never the bare 'python3' MS Store alias).
+    PYTHON_BIN="$SCOOP_ROOT/apps/python/current/python.exe"
+    if [[ ! -x "$PYTHON_BIN" ]]; then
+      # Fallback: versioned scoop python app dir (e.g. python311).
+      PYTHON_BIN="$(ls "$SCOOP_ROOT"/apps/python*/current/python.exe 2>/dev/null | head -n1)"
+    fi
+    # Claude Code on Windows reads %USERPROFILE%\.claude\settings.json. Resolve
+    # from $USERPROFILE, NOT $HOME: under corporate AD, Git Bash $HOME can be a
+    # redirected HOMEDRIVE/HOMEPATH (network share) that Claude Code never reads.
+    CLAUDE_DIR="$(cygpath -u "$USERPROFILE" 2>/dev/null || printf '%s' "$HOME")/.claude"
+    to_persist() { cygpath -m "$1"; }                  # /c/Users -> C:/Users
+    HOOK_CMD_FOR() { printf '"%s" "%s"' "$(cygpath -m "$PYTHON_BIN")" "$(cygpath -m "$1")"; }
+    PKG_HINT="scoop bucket add caddy https://github.com/meetcaddy/scoop-caddy && scoop install caddy-frameworks"
+    PY_HINT="scoop install python"
+    ;;
+  *)
+    echo "ERROR: unsupported OS '$(uname -s)' for /caddy:carl-setup (macOS and Windows only)."
+    exit 1
+    ;;
+esac
+
+# Sanity: caddy-carl package must be installed
 if [[ -z "$CARL_PKG" ]] || [[ ! -d "$CARL_PKG/share/caddy-carl/mcp" ]]; then
-  echo "ERROR: caddy-carl Homebrew formula not installed."
-  echo "  Run: brew tap meetcaddy/caddy && brew install caddy-frameworks"
+  echo "ERROR: caddy-carl not installed (expected source at $CARL_PKG/share/caddy-carl/mcp)."
+  echo "  Run: $PKG_HINT"
   exit 1
 fi
+
+# Sanity: a usable Python 3 must be resolvable
+if [[ -z "$PYTHON_BIN" ]] || [[ ! -x "$PYTHON_BIN" ]]; then
+  echo "ERROR: Python 3 not found (the CARL seeder + hook require it)."
+  echo "  Run: $PY_HINT"
+  exit 1
+fi
+# ---------------------------------------------------------------------------
 
 CARL_GLOBAL_SRC="$CARL_PKG/share/caddy-carl/mcp"
 CARL_TEMPLATE_DIR="$CARL_PKG/share/caddy-carl/carl-template"
@@ -92,19 +165,26 @@ else
 fi
 
 # Step 4: register in .mcp.json (merge / repair / keep)
+# PYTHON_BIN is already resolved in the OS-aware preamble.
 CARL_MCP_INDEX="$CARL_MCP_DIR/index.js"
-PYTHON_BIN="$(command -v python3)"
 
 if [[ ! -f "$CARL_MCP_INDEX" ]]; then
   echo "ERROR: $CARL_MCP_INDEX missing after copy"
   exit 1
 fi
 
+# Paths handed to python and written into config are the persisted form:
+# identity on macOS, Windows mixed-slash (C:/...) on Windows so node and
+# python.exe can actually use them. Passed via env (not interpolated into
+# the script body) so they survive spaces and need no shell quoting.
+CARL_MCP_INDEX_PERSIST="$(to_persist "$CARL_MCP_INDEX")"
+WORKSPACE_MCP_JSON_PERSIST="$(to_persist "$WORKSPACE_MCP_JSON")"
+
 if [[ -f "$WORKSPACE_MCP_JSON" ]]; then
-  MERGE_RESULT="$("$PYTHON_BIN" -c "
+  MERGE_RESULT="$(CADDY_MCP_JSON="$WORKSPACE_MCP_JSON_PERSIST" CADDY_IDX="$CARL_MCP_INDEX_PERSIST" "$PYTHON_BIN" -c "
 import json, os
-path = '$WORKSPACE_MCP_JSON'
-correct_index = '$CARL_MCP_INDEX'
+path = os.environ['CADDY_MCP_JSON']
+correct_index = os.environ['CADDY_IDX']
 with open(path) as f:
     data = json.load(f)
 servers = data.setdefault('mcpServers', {})
@@ -127,22 +207,17 @@ print(action)
 ")"
   case "$MERGE_RESULT" in
     merged)   echo "OK  carl-mcp merged into $WORKSPACE_MCP_JSON" ;;
-    repaired) echo "OK  carl-mcp repaired in $WORKSPACE_MCP_JSON (path now $CARL_MCP_INDEX)" ;;
+    repaired) echo "OK  carl-mcp repaired in $WORKSPACE_MCP_JSON (path now $CARL_MCP_INDEX_PERSIST)" ;;
     kept)     echo "SKIP $WORKSPACE_MCP_JSON already has working carl-mcp entry" ;;
     *)        echo "FAIL merge unexpected result: $MERGE_RESULT"; exit 1 ;;
   esac
 else
-  cat > "$WORKSPACE_MCP_JSON" <<JSON_EOF
-{
-  "mcpServers": {
-    "carl-mcp": {
-      "type": "stdio",
-      "command": "node",
-      "args": ["$CARL_MCP_INDEX"]
-    }
-  }
-}
-JSON_EOF
+  CADDY_MCP_JSON="$WORKSPACE_MCP_JSON_PERSIST" CADDY_IDX="$CARL_MCP_INDEX_PERSIST" "$PYTHON_BIN" -c "
+import json, os
+with open(os.environ['CADDY_MCP_JSON'], 'w') as f:
+    json.dump({'mcpServers': {'carl-mcp': {'type': 'stdio', 'command': 'node',
+              'args': [os.environ['CADDY_IDX']]}}}, f, indent=2)
+"
   echo "OK  $WORKSPACE_MCP_JSON created with carl-mcp registration"
 fi
 
@@ -160,12 +235,17 @@ fi
 # If you cannot locate the skill directory, skip steps 6 and 7 and emit a
 # WARN line. Steps 1-5 above will still have completed successfully.
 
-CADDY_RULES_FILE="$SKILL_DIR/carl-rules/caddy-safety.json"
-CADDY_SEEDER="$SKILL_DIR/lib/seed-carl-domain.py"
-CADDY_CARL_JSON="$CARL_WORKSPACE_DIR/carl.json"
-CADDY_STATE_FILE="$CARL_WORKSPACE_DIR/caddy-carl-state.json"
+# Normalize up front. $SKILL_DIR is resolved by Claude and on Windows may
+# arrive as a backslash path; the raw form can make the -f guard below
+# false-negative (and silently skip the safety-rule seed). to_persist is
+# identity on macOS, so the guard is byte-equivalent there.
+CADDY_RULES_FILE="$(to_persist "$SKILL_DIR/carl-rules/caddy-safety.json")"
+CADDY_SEEDER="$(to_persist "$SKILL_DIR/lib/seed-carl-domain.py")"
+CADDY_CARL_JSON="$(to_persist "$CARL_WORKSPACE_DIR/carl.json")"
+CADDY_STATE_FILE="$(to_persist "$CARL_WORKSPACE_DIR/caddy-carl-state.json")"
 
 if [[ -f "$CADDY_SEEDER" ]] && [[ -f "$CADDY_RULES_FILE" ]]; then
+  # Already persisted above, so python.exe (Windows) gets paths it can open.
   if "$PYTHON_BIN" "$CADDY_SEEDER" \
       --rules-file "$CADDY_RULES_FILE" \
       --carl-json "$CADDY_CARL_JSON" \
@@ -179,15 +259,17 @@ else
   echo "     (steps 1-5 succeeded; carl-mcp still wired, but caddy-safety domain not seeded)"
 fi
 
-# Step 7: register CARL UserPromptSubmit hook in ~/.claude/settings.json
+# Step 7: register CARL UserPromptSubmit hook in the Claude Code settings.json
 #
 # Without this, seeded rules sit in carl.json but never inject into prompts.
 # Idempotent: detects existing carl-hook.py registration and skips if present.
 # One-time backup of pre-existing settings.json is preserved across re-runs.
+# CLAUDE_DIR is resolved per-OS in the preamble ($HOME/.claude on macOS,
+# %USERPROFILE%\.claude on Windows) so the hook lands where Claude Code reads.
 
 CARL_HOOK_PATH="$CARL_PKG/share/caddy-carl/hooks/carl-hook.py"
-CLAUDE_SETTINGS="$HOME/.claude/settings.json"
-CLAUDE_SETTINGS_BAK="$HOME/.claude/settings.json.pre-caddy-carl.bak"
+CLAUDE_SETTINGS="$CLAUDE_DIR/settings.json"
+CLAUDE_SETTINGS_BAK="$CLAUDE_DIR/settings.json.pre-caddy-carl.bak"
 
 if [[ -f "$CARL_HOOK_PATH" ]]; then
   # Backup once, preserving the true pre-Caddy snapshot across re-runs.
@@ -196,10 +278,15 @@ if [[ -f "$CARL_HOOK_PATH" ]]; then
     echo "OK  ~/.claude/settings.json backed up to $CLAUDE_SETTINGS_BAK"
   fi
 
-  HOOK_REG_RESULT="$("$PYTHON_BIN" -c "
+  # Command the Claude Code hook runner will execute every prompt.
+  #   macOS:   python3 <hook.py>            (byte-identical to prior versions)
+  #   Windows: "<scoop python.exe>" "<hook.py>"  (absolute; dodges the
+  #            Microsoft Store 'python3' alias and PATH ambiguity)
+  HOOK_CMD="$(HOOK_CMD_FOR "$CARL_HOOK_PATH")"
+  HOOK_REG_RESULT="$(CADDY_SETTINGS="$(to_persist "$CLAUDE_SETTINGS")" CADDY_HOOK_CMD="$HOOK_CMD" "$PYTHON_BIN" -c "
 import json, os, pathlib, sys
-settings_path = pathlib.Path('$CLAUDE_SETTINGS')
-hook_path = '$CARL_HOOK_PATH'
+settings_path = pathlib.Path(os.environ['CADDY_SETTINGS'])
+hook_cmd = os.environ['CADDY_HOOK_CMD']
 settings_path.parent.mkdir(parents=True, exist_ok=True)
 if settings_path.exists():
     try:
@@ -215,7 +302,7 @@ already = False
 for entry in ups:
     for h in entry.get('hooks', []):
         cmd = h.get('command', '')
-        if cmd.endswith('carl-hook.py') or hook_path in cmd:
+        if 'carl-hook.py' in cmd:
             already = True
             break
     if already:
@@ -225,7 +312,7 @@ if already:
 else:
     ups.append({
         'matcher': '*',
-        'hooks': [{'type': 'command', 'command': 'python3 ' + hook_path}],
+        'hooks': [{'type': 'command', 'command': hook_cmd}],
         'description': 'Caddy: CARL UserPromptSubmit hook (injects active rules from <workspace>/.carl/carl.json into every prompt). Bypass: remove this entry.',
         'id': 'user-prompt-submit:caddy-carl-hook'
     })
@@ -242,7 +329,7 @@ else:
   esac
 else
   echo "WARN $CARL_HOOK_PATH not found; seeded CARL rules will NOT auto-inject"
-  echo "     Reinstall: brew reinstall caddy-carl"
+  echo "     Reinstall caddy-frameworks: $PKG_HINT"
 fi
 
 echo ""
@@ -280,7 +367,7 @@ The remaining 22 tools (v1 legacy + v2 advanced: add_rule, remove_rule, replace_
 - **`carl-mcp ✗ failed` after restart:** check `<workspace>/.carl/carl-mcp/index.js` exists and is readable. Check `<workspace>/.carl/carl-mcp/node_modules/@modelcontextprotocol/sdk/` exists. If either is missing, re-run this skill.
 - **`.mcp.json` already had a broken carl-mcp entry:** this skill auto-repairs (case b). Re-run to fix.
 - **Multiple workspaces:** run once per workspace where you want carl-mcp. Each gets its own `.carl/` directory.
-- **CARL rules not injecting into prompts:** this skill auto-registers `carl-hook.py` in `~/.claude/settings.json` (Step 7). If it didn't fire, check whether the entry is present in your settings file and that `python3 $(brew --prefix caddy-carl)/share/caddy-carl/hooks/carl-hook.py` resolves to a real file. To force a re-register, remove the entry and re-run this skill.
+- **CARL rules not injecting into prompts:** this skill auto-registers `carl-hook.py` in the Claude Code `settings.json` (Step 7; `~/.claude/settings.json` on macOS, `%USERPROFILE%\.claude\settings.json` on Windows). If it didn't fire, open that file and confirm a `UserPromptSubmit` entry whose `command` ends in `carl-hook.py` is present and that the referenced path resolves to a real file. On macOS the command is `python3 $(brew --prefix caddy-carl)/share/caddy-carl/hooks/carl-hook.py`; on Windows it is `"<scoop>\apps\python\current\python.exe" "<scoop>\apps\caddy-carl\current\share\caddy-carl\hooks\carl-hook.py"`. To force a re-register, remove the entry and re-run this skill.
 
 ## Notes
 
