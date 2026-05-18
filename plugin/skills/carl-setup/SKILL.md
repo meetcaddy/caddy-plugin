@@ -234,6 +234,16 @@ fi
 # the exact path depends on the customer's Claude Code plugin install.
 # If you cannot locate the skill directory, skip steps 6 and 7 and emit a
 # WARN line. Steps 1-5 above will still have completed successfully.
+#
+# Do NOT improvise a separate ad-hoc pre-flight that `ls`-es paths. This
+# Execution block is self-verifying and idempotent: it already handles a
+# fresh init (no <workspace>/.carl/ yet) and a pre-existing .mcp.json
+# gracefully via guarded `[[ -e ]]`/`[[ -f ]]` tests. Just run the block.
+# If you must probe a path while resolving SKILL_DIR, use `[[ -e PATH ]]`
+# or `test`, NEVER `ls` — and never probe <workspace>/.carl, which
+# legitimately does not exist before this skill runs. A non-zero `ls`
+# exit there is benign but surfaces a confusing "Error: Exit code 2" to
+# the customer mid-setup even though everything is fine.
 
 # Normalize up front. $SKILL_DIR is resolved by Claude and on Windows may
 # arrive as a backslash path; the raw form can make the -f guard below
