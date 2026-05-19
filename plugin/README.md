@@ -288,7 +288,7 @@ If you also want to remove the marketplace registration (so Caddy no longer show
 /plugin marketplace remove meet-caddy
 ```
 
-You can also unset your env vars by removing the two `export` lines from your shell profile and reloading the shell. Your `~/.caddy/voice.md` and `~/.caddy/brand.md` files are yours; they are NOT touched by uninstall. Delete them manually if you want a clean wipe.
+You can also unset the env var by removing the `export CADDY_BEARER_TOKEN` line from your shell profile and reloading the shell. Your `~/.caddy/voice.md` and `~/.caddy/brand.md` files are yours; they are NOT touched by uninstall. Delete them manually if you want a clean wipe.
 
 Cancelling your Caddy subscription is a separate flow (email hi@meetcaddy.com). Uninstalling the plugin does not cancel billing, and revoking your bearer token is a separate operator action on our end.
 
@@ -326,7 +326,7 @@ A few rough edges to be aware of. None are blockers, but they affect how you'll 
 - **Caddy runs on your own Claude session — no Anthropic API key.** You do not set or pay for an `ANTHROPIC_API_KEY`. If Claude Code ever asks about an API key for the MCP server, hit Enter to skip; Caddy does not need one.
   - **If you see `Please run /login`:** Claude Code's own sign-in is missing or expired (common on a fresh install). Type `/login` inside Claude Code, complete the browser sign-in, and retry. This is purely a Claude Code thing; the Caddy plugin is unaffected.
 
-- **Env vars must be exported in the same shell that launches Claude Code.** If you start Claude Code from one terminal and your `export` lines live in `~/.bashrc` but you launched from a zsh session (or vice versa), the plugin won't see the secrets. Use `echo $CADDY_BEARER_TOKEN` in the same terminal *before* launching Claude Code to verify it's set.
+- **Env vars must be exported in the same shell that launches Claude Code.** If you start Claude Code from one terminal and your `export CADDY_BEARER_TOKEN` line lives in `~/.bashrc` but you launched from a zsh session (or vice versa), the plugin won't see the token. Use `echo $CADDY_BEARER_TOKEN` in the same terminal *before* launching Claude Code to verify it's set.
 
 - **`/caddy:draft`, `/caddy:settings`, `/caddy:intake`, `/caddy:triage`, `/caddy:start-of-day`, `/caddy:prep`, and `/caddy:followup` are ALL shipped.** That's the full v1.0 anchor skills set. v1.1+ ports the remaining 38+ skills.
 

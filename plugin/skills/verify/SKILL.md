@@ -18,9 +18,9 @@ fix it prints is a command you choose to run yourself.
 
 ## What it checks (each maps to a known support case)
 
-1. The six Caddy frameworks are installed via Homebrew.
-2. The framework links in `~/.claude/` exist and are not blocked by a
-   pre-existing file (the collision case).
+1. The six Caddy frameworks are installed (Homebrew on macOS, Scoop on Windows).
+2. The framework links in the Claude config dir exist (and on macOS are not
+   blocked by a pre-existing file — the collision case).
 3. The license token is set and is actually accepted by the server.
 4. Your voice and brand files exist and the voice sample is substantial.
 5. This workspace's MCP servers (`base-mcp`, `carl-mcp`) are wired.
@@ -39,7 +39,46 @@ PASS=0; FAILN=0; WARNN=0
 ok()   { echo "PASS  $*"; PASS=$((PASS+1)); }
 fail() { echo "FAIL  $*"; FAILN=$((FAILN+1)); }
 warn() { echo "WARN  $*"; WARNN=$((WARNN+1)); }
-PY="$(command -v python3 || true)"
+
+# --- OS-aware resolution preamble ------------------------------------------
+# macOS branch is behavior-identical to prior versions (brew, $HOME/.claude,
+# $HOME/.caddy, command -v python3). Windows branch resolves the Scoop
+# install root, Scoop's absolute python.exe (never the MS Store `python3`
+# alias), and %USERPROFILE%-based config dirs (Git Bash $HOME can differ
+# from %USERPROFILE% under corporate AD).
+case "$(uname -s)" in
+  Darwin)
+    OS=mac
+    PY="$(command -v python3 || true)"
+    CLAUDE_DIR="$HOME/.claude"
+    CADDY_DIR="$HOME/.caddy"
+    FW_FIX="brew tap meetcaddy/caddy && brew install caddy-frameworks"
+    TOKEN_HINT="Add it to ~/.zshrc or ~/.bashrc to make it stick."
+    fw_installed() { brew list "$1" >/dev/null 2>&1; }
+    ;;
+  MINGW*|MSYS*|CYGWIN*)
+    OS=win
+    SCOOP_ROOT="$(cygpath -u "${SCOOP:-$USERPROFILE\\scoop}" 2>/dev/null || printf '%s' "$HOME/scoop")"
+    PY="$SCOOP_ROOT/apps/python/current/python.exe"
+    [ -x "$PY" ] || PY="$(ls "$SCOOP_ROOT"/apps/python*/current/python.exe 2>/dev/null | head -n1)"
+    [ -x "$PY" ] || PY=""
+    UP="$(cygpath -u "$USERPROFILE" 2>/dev/null || printf '%s' "$HOME")"
+    CLAUDE_DIR="$UP/.claude"
+    CADDY_DIR="$UP/.caddy"
+    FW_FIX="scoop bucket add caddy https://github.com/meetcaddy/scoop-caddy && scoop install caddy-frameworks"
+    TOKEN_HINT="Set it persistently in PowerShell: setx CADDY_BEARER_TOKEN \"caddy_...\" (then reopen the terminal)."
+    fw_installed() { [ -d "$SCOOP_ROOT/apps/$1/current" ]; }
+    ;;
+  *)
+    OS=other
+    PY="$(command -v python3 || true)"
+    CLAUDE_DIR="$HOME/.claude"; CADDY_DIR="$HOME/.caddy"
+    FW_FIX="(unsupported OS — macOS or Windows only)"
+    TOKEN_HINT="Add it to your shell profile to make it stick."
+    fw_installed() { return 1; }
+    ;;
+esac
+# ---------------------------------------------------------------------------
 
 echo "Caddy verify — read-only health check"
 echo "workspace: $WORKSPACE"
@@ -48,27 +87,41 @@ echo "----------------------------------------"
 # 1. Frameworks installed (support case: slash commands do not appear)
 MISSING_F=""
 for f in caddy-base caddy-carl caddy-paul caddy-seed caddy-skillsmith caddy-aegis; do
-  brew list "$f" >/dev/null 2>&1 || MISSING_F="$MISSING_F $f"
+  fw_installed "$f" || MISSING_F="$MISSING_F $f"
 done
 if [ -z "$MISSING_F" ]; then
-  ok "all 6 Caddy frameworks installed via Homebrew"
+  ok "all 6 Caddy frameworks installed"
 else
-  fail "missing Homebrew formulas:$MISSING_F"
-  echo "      Fix: brew tap meetcaddy/caddy && brew install caddy-frameworks"
+  fail "missing frameworks:$MISSING_F"
+  echo "      Fix: $FW_FIX"
 fi
 
-# 2. ~/.claude links + collision (support case 7.3 / 7.7b)
-# Only meaningful if the Homebrew frameworks are installed: a caddy-link
-# collision can only exist when caddy-link is the install mechanism. If
-# the formulas are absent, a directory at these paths is NOT a Caddy
-# collision (it may be a legitimate non-Homebrew install). Telling the
-# user to move it would be destructive, so this check is gated on #1.
+# 2. Framework links + collision (support case 7.3 / 7.7b)
+# Only meaningful if the frameworks are installed: a caddy-link collision
+# can only exist when caddy-link is the install mechanism. If the
+# frameworks are absent, a directory at these paths is NOT a Caddy
+# collision (it may be a legitimate non-Caddy install). Telling the user
+# to move it would be destructive, so this check is gated on #1.
+# macOS uses POSIX symlinks (collision-detectable). Windows caddy-link
+# creates junctions (indistinguishable from real dirs in Git Bash, and
+# the Windows helper does its own collision handling) so on Windows this
+# is a presence check only.
 if [ -n "$MISSING_F" ]; then
   warn "framework links: skipped (frameworks not installed; fix item 1 first)"
+elif [ "$OS" = win ]; then
+  MISSINGLINK=0
+  for p in commands/base commands/paul commands/seed commands/skillsmith commands/aegis skills/base; do
+    [ -e "$CLAUDE_DIR/$p" ] || MISSINGLINK=1
+  done
+  if [ "$MISSINGLINK" -eq 1 ]; then
+    warn "some framework links are absent under %USERPROFILE%\\.claude\\. Fix: run caddy-link"
+  else
+    ok "framework links present under %USERPROFILE%\\.claude\\"
+  fi
 else
   COLLISION=0; MISSINGLINK=0
   for p in commands/base commands/paul commands/seed commands/skillsmith commands/aegis skills/base base-framework paul-framework skillsmith-specs aegis; do
-    T="$HOME/.claude/$p"
+    T="$CLAUDE_DIR/$p"
     if [ -L "$T" ]; then :
     elif [ -e "$T" ]; then
       COLLISION=1
@@ -94,7 +147,7 @@ URL="${CADDY_MCP_URL:-https://caddy-app-tbern75s-projects.vercel.app/api/mcp}"
 if [ -z "${CADDY_BEARER_TOKEN:-}" ]; then
   fail "CADDY_BEARER_TOKEN is not set in this shell"
   echo "      Fix: export the token from your welcome email, then restart"
-  echo "      Claude Code. Add it to ~/.zshrc or ~/.bashrc to make it stick."
+  echo "      Claude Code. $TOKEN_HINT"
 else
   CODE="$(curl -s -o /dev/null -w '%{http_code}' -m 10 -H "Authorization: Bearer $CADDY_BEARER_TOKEN" "$URL" 2>/dev/null || echo 000)"
   if [ "$CODE" = "401" ]; then
@@ -110,10 +163,10 @@ else
 fi
 
 # 4. Voice + brand files (support cases 7.2 / 7.4)
-VOICE="$HOME/.caddy/voice.md"
-BRAND="$HOME/.caddy/brand.md"
+VOICE="$CADDY_DIR/voice.md"
+BRAND="$CADDY_DIR/brand.md"
 if [ ! -f "$VOICE" ] || [ ! -f "$BRAND" ]; then
-  fail "voice or brand profile missing in ~/.caddy/"
+  fail "voice or brand profile missing (no voice.md/brand.md in your Caddy home dir)"
   echo "      Fix: run /caddy:intake (the 10-question voice + brand interview)."
 else
   WC="$(wc -w < "$VOICE" 2>/dev/null | tr -d ' ')"
@@ -165,11 +218,11 @@ PYEOF
 fi
 
 # 6. CARL safety hook registered (support case 7.6 / v0.5.0 safety rules)
-SETTINGS="$HOME/.claude/settings.json"
+SETTINGS="$CLAUDE_DIR/settings.json"
 if [ -z "$PY" ]; then
-  warn "python3 not found; skipping the safety-hook check"
+  warn "python not found; skipping the safety-hook check"
 elif [ ! -f "$SETTINGS" ]; then
-  warn "no ~/.claude/settings.json; safety hook not registered"
+  warn "no Claude Code settings.json yet; safety hook not registered"
   echo "      Fix: run /caddy:carl-setup (registers the safety hook)."
 else
   HOOK="$("$PY" - "$SETTINGS" <<'PYEOF'
