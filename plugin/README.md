@@ -238,25 +238,11 @@ The Caddy bearer token is long-lived; it does not expire on a schedule. It must 
 
 If you suspect your bearer token is leaked, email **hi@meetcaddy.com** immediately with subject line `Bearer token rotation request`. Include your account email. Tucker will revoke the old token and issue a fresh one-time exchange URL. Existing Claude Code sessions will start returning auth errors until you swap the new token into your env vars.
 
-### Anthropic API key
-
-If you suspect your Anthropic key is leaked, revoke it yourself at https://platform.anthropic.com/settings/keys. Generate a new key on the same page. Update `ANTHROPIC_API_KEY` in your shell profile, reload your shell, and restart Claude Code. Caddy does not need to be involved; we never stored your key.
-
 ---
 
 ## First-call failure table
 
-If `/caddy:draft` returns an error, here is what each code means and what to do:
-
-| Code | What it means | What you do |
-|---|---|---|
-| `invalid_api_key` | Your `ANTHROPIC_API_KEY` was rejected by Anthropic. | Check the env var is exported in the same shell Claude Code runs in. Verify the key is active at https://platform.anthropic.com/settings/keys. |
-| `permission_denied` | Your Anthropic key works but lacks permission for the requested model. | Check your Anthropic account tier and model access. |
-| `invalid_request` | Caddy sent Anthropic a malformed request. | Likely a Caddy bug. Email hi@meetcaddy.com with the timestamp. |
-| `not_found` | The model or resource Caddy asked for does not exist. | Your plugin version may be out of date. Update the plugin source, or contact hi@meetcaddy.com. |
-| `upstream_rate_limited` | Anthropic rate-limited the request. | Wait 60 seconds and retry. If persistent, your Anthropic account may need a higher rate tier. |
-| `upstream_unavailable` | Anthropic is unreachable or timed out (Caddy has a 55-second budget per draft). | Try again shortly. If persistent on multiple drafts, check Anthropic status. |
-| `internal` | Caddy hit an internal error. | Try again. If persistent, email hi@meetcaddy.com with the timestamp; do NOT include the bearer token or Anthropic key. |
+Caddy is single-billing: `/caddy:draft` and the other skills run inside your own Claude Code session on your Claude subscription, so there is no Caddy-side model call and no Anthropic API error codes to decode. Real failures fall into three buckets — the plugin's license proxy, Claude Code's own auth, and install issues — each covered below.
 
 ### Errors from the plugin's local proxy (start with `proxy:`)
 
@@ -312,12 +298,12 @@ Compromise reports, install help, billing questions, feature requests: **hi@meet
 
 When reporting an issue, include:
 - Timestamp (your local time + timezone)
-- The exact error code (from the failure table above) or error text
+- The exact error text or `proxy:` message (see the failure tables above)
 - Your account email
 - Claude Code version (`claude --version`)
 - macOS version
 
-Do **not** include your bearer token or Anthropic API key in support emails. We do not need them to debug; if we do, we will ask via a secure channel.
+Do **not** include your bearer token in support emails. We do not need it to debug; if we do, we will ask via a secure channel.
 
 ---
 
@@ -354,9 +340,9 @@ A few rough edges to be aware of. None are blockers, but they affect how you'll 
 
 ## Under the hood (for curious operators)
 
-The plugin ships a small Node.js stdio-to-HTTP proxy at `bin/caddy-mcp-proxy.mjs` (about 100 lines, zero third-party dependencies). The proxy reads `CADDY_BEARER_TOKEN` and `ANTHROPIC_API_KEY` from the shell environment, then forwards each MCP request to Caddy's MCP server at https://caddy-app-tbern75s-projects.vercel.app/api/mcp with those values attached as request headers. SSE streaming responses are parsed and forwarded to stdout line by line. All draft generation happens server-side using Anthropic Claude Sonnet 4.6, streamed back via the MCP `notifications/message` channel. Node.js 18 or higher is required (built-in `fetch`).
+The plugin ships a small Node.js stdio-to-HTTP proxy at `bin/caddy-mcp-proxy.mjs` (about 100 lines, zero third-party dependencies). It reads only `CADDY_BEARER_TOKEN` from the shell environment and forwards MCP requests to Caddy's server at https://caddy-app-tbern75s-projects.vercel.app/api/mcp with that bearer attached for a license check. Caddy is single-billing: the `/api/mcp` endpoint validates your license only — it performs no model generation. The actual drafting and operator-rhythm work is done by the self-contained skill files running inside your own Claude Code session on your existing Claude subscription. Node.js 18 or higher is required (built-in `fetch`).
 
-Your bearer token authenticates you to Caddy. Your Anthropic key pays for the model call. Caddy stores neither.
+Your bearer token is your Caddy license. There is no Anthropic API key in the flow, and Caddy never makes a model call on your behalf — generation happens in your own Claude Code session.
 
 ---
 
