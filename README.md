@@ -13,7 +13,8 @@ If you have received an invite from Caddy, install the plugin inside Claude Code
 
 You will also need:
 - A Caddy bearer token (issued by us via your one-time exchange URL)
-- An Anthropic API key (from https://platform.anthropic.com)
+
+Caddy is single-billing: it runs inside your own Claude Code session on your existing Claude subscription. There is no separate Anthropic API key to obtain, set, or pay for.
 
 Full install instructions, troubleshooting, and credential management lives in `plugin/README.md` inside this repo. Read that before running your first `/caddy:draft` call.
 
