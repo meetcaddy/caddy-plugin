@@ -1,10 +1,10 @@
-# Caddy plugin (v0.3.0)
+# Caddy plugin
 
 > **Invite-only v1.0.** Caddy is currently a closed-pilot SaaS for a small group of operators. If you do not have a bearer token from Tucker, you cannot use this plugin yet. Contact hi@meetcaddy.com to request access.
 
-Caddy. Your unfair advantage. Voice-fingerprinted drafts, powered by the Caddy backend.
+Caddy. Your unfair advantage. Voice-fingerprinted drafts and operator rhythm, running in your own Claude Code on your existing Claude subscription.
 
-This plugin is the thin Claude Code surface for the Caddy SaaS. The actual prompt logic, voice tuning, and model routing live on Caddy's servers; this plugin just routes your slash commands to them and renders the streamed output in your local Claude Code session.
+This plugin is the thin Claude Code surface for Caddy. The skills run inside your own Claude Code session on your Claude subscription — no prompt logic or model routing runs server-side. Caddy is single-billing: the backend's only role is validating your license.
 
 ---
 
@@ -26,7 +26,9 @@ Caddy is single-billing: drafting and operator-rhythm work run inside your own C
 
 ---
 
-## Install (macOS only for v0.1.0)
+## Install (macOS)
+
+> **Windows:** the steps differ (PowerShell + Scoop, not zsh/Homebrew). Follow the Windows install guide Tucker sends you, not the macOS steps below.
 
 > **Editor note:** if your terminal doesn't have the `code` shell command (typical on a fresh Mac), substitute `open -e` in the commands below. `open -e ~/.zshrc` opens the file in TextEdit. To create an empty file first if it doesn't exist: `touch ~/.zshrc && open -e ~/.zshrc`. If you'd rather install the `code` CLI: open VS Code, press Cmd+Shift+P, type "shell command", pick **Shell Command: Install 'code' command in PATH**.
 
@@ -62,7 +64,7 @@ Caddy is single-billing: drafting and operator-rhythm work run inside your own C
    /plugin install caddy@meet-caddy
    ```
 
-   The first command registers Caddy's plugin catalog. The second downloads the plugin into your Claude Code session (sparse clone of the `plugin/` folder, pinned to the v0.1.0 commit).
+   The first command registers Caddy's plugin catalog. The second downloads the plugin into your Claude Code session (sparse clone of the `plugin/` folder, pinned to the commit the marketplace currently tags).
 
 4. **Single-billing:** Caddy runs entirely inside your own Claude Code session on your existing Claude subscription. If Claude Code prompts you about an API key for the MCP server, just hit Enter to skip — Caddy does not need one.
 
@@ -138,8 +140,8 @@ Caddy ships with a local-only settings command for tuning plugin behavior. Setti
 /caddy:settings unset connector                 # clear a setting
 ```
 
-Available settings in v0.1.3:
-- `connector` — values: `anthropic-connector` or `copy-paste`. Optional. Future anchor skills (intake, triage, etc.) will branch on this; `/caddy:draft` does not read it in v0.1.3.
+Available settings:
+- `connector` — values: `anthropic-connector` or `copy-paste`. Optional. Future anchor skills (intake, triage, etc.) will branch on this; `/caddy:draft` does not read it.
 
 ---
 
@@ -202,7 +204,7 @@ mcp__carl-mcp__carl_v2_get_staged         # see what's pending approval
 
 The remaining 22 tools cover advanced cases: rule CRUD (`add_rule`, `remove_rule`, `replace_rules`), archival, domain creation/toggling, and v1 legacy tools kept for back-compat with existing CARL workspaces from caddy-live installs.
 
-**Prerequisite (one-time per machine):** install the Caddy Homebrew tap — the `caddy-frameworks` meta-formula at v0.3.0 now bundles CARL alongside BASE + PAUL + SEED + Skillsmith + Aegis:
+**Prerequisite (one-time per machine):** install the Caddy Homebrew tap — the `caddy-frameworks` meta-formula bundles CARL alongside BASE + PAUL + SEED + Skillsmith + Aegis:
 
 ```
 brew tap meetcaddy/caddy
@@ -212,7 +214,7 @@ caddy-link
 
 After that, run `/caddy:carl-setup` once inside Claude Code from each workspace where you want CARL's `mcp__carl-mcp__*` tools available. The setup is idempotent (safe to re-run) and auto-repairs broken `.mcp.json` registrations. Each workspace gets its own `.carl/` directory (per-project decisions log + sessions).
 
-**Advanced — rule injection into every prompt:** CARL ships a Python `UserPromptSubmit` hook at `$(brew --prefix caddy-carl)/share/caddy-carl/hooks/carl-hook.py`. Register it in `~/.claude/settings.json` if you want active CARL rules injected into every Claude Code prompt automatically. Documented as advanced for v1.0; revisit at v1.1.
+**Rule injection into every prompt:** `/caddy:carl-setup` automatically registers CARL's `UserPromptSubmit` hook in your Claude Code `settings.json` (with a one-time backup of the prior file), so active CARL rules inject into every prompt. No manual step — it is part of the setup skill.
 
 Upstream: `carl-core@2.0.2` by Christopher Kahler (MIT). Same upstream author as BASE.
 
@@ -263,7 +265,7 @@ These are errors from Claude Code itself, before the Caddy plugin even runs. The
 
 | Error message | What it means | What you do |
 |---|---|---|
-| `Please run /login` + `API Error: 401 Invalid authentication credentials` | Claude Code's own session token is missing or expired on this Mac. The Caddy plugin never got a chance to run. | Inside your Claude Code session, type `/login` and complete the browser sign-in flow. Then retry `/caddy:draft`. |
+| `Please run /login` + `API Error: 401 Invalid authentication credentials` | Claude Code's own session token is missing or expired on this machine. The Caddy plugin never got a chance to run. | Inside your Claude Code session, type `/login` and complete the browser sign-in flow. Then retry `/caddy:draft`. |
 | Slash command `/caddy:draft` not recognized | The plugin didn't load. | Run `/plugin` and verify `caddy` shows as installed. If not, run `/plugin install caddy@meet-caddy` again. If it shows installed but the command still doesn't appear, run `/reload-plugins`. |
 
 ### Install-level errors (rare)
@@ -301,23 +303,23 @@ When reporting an issue, include:
 - The exact error text or `proxy:` message (see the failure tables above)
 - Your account email
 - Claude Code version (`claude --version`)
-- macOS version
+- Your OS and version (macOS or Windows)
 
 Do **not** include your bearer token in support emails. We do not need it to debug; if we do, we will ask via a secure channel.
 
 ---
 
-## What this plugin does NOT do (v0.1.0)
+## What this plugin does NOT do
 
 - It does not auto-update silently. Bumps go out as new marketplace versions; you re-run `/plugin install caddy@meet-caddy` to pick them up.
 - It does not store voice/brand markdown anywhere besides your local `~/.caddy/`. Those files live on your machine; back them up yourself.
 - It does not log anything beyond what Claude Code itself logs in your session.
-- It does not work on Windows or Linux yet (macOS first; other platforms after the v1.0 pilot).
-- All v1.0 anchor skills (`/caddy:intake`, `/caddy:triage`, `/caddy:start-of-day`, `/caddy:prep`, `/caddy:followup`) are supported as of v0.1.8, alongside `/caddy:draft` and `/caddy:settings`.
+- It runs on macOS and Windows. Linux is not supported.
+- All v1.0 anchor skills (`/caddy:intake`, `/caddy:triage`, `/caddy:start-of-day`, `/caddy:prep`, `/caddy:followup`) are supported, alongside `/caddy:draft` and `/caddy:settings`.
 
 ---
 
-## Known limitations (v0.1.0)
+## Known limitations
 
 A few rough edges to be aware of. None are blockers, but they affect how you'll interact with the plugin day to day.
 
@@ -326,7 +328,7 @@ A few rough edges to be aware of. None are blockers, but they affect how you'll 
 
 - **Env vars must be exported in the same shell that launches Claude Code.** If you start Claude Code from one terminal and your `export` lines live in `~/.bashrc` but you launched from a zsh session (or vice versa), the plugin won't see the secrets. Use `echo $CADDY_BEARER_TOKEN` in the same terminal *before* launching Claude Code to verify it's set.
 
-- **`/caddy:draft`, `/caddy:settings`, `/caddy:intake`, `/caddy:triage`, `/caddy:start-of-day`, `/caddy:prep`, and `/caddy:followup` are ALL shipped as of v0.1.8.** That's the full v1.0 anchor skills set. v1.1+ ports the remaining 38+ skills.
+- **`/caddy:draft`, `/caddy:settings`, `/caddy:intake`, `/caddy:triage`, `/caddy:start-of-day`, `/caddy:prep`, and `/caddy:followup` are ALL shipped.** That's the full v1.0 anchor skills set. v1.1+ ports the remaining 38+ skills.
 
 - **Only one customer-settable key in v1.0: `connector` (modes: `anthropic-connector` or `copy-paste`).** Additional settings — voice strictness, model preference, draft length, etc. — ship in v1.1+. The config file schema includes a `schemaVersion` field so future settings can be added without breaking existing customer config.
 
