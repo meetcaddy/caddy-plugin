@@ -84,7 +84,7 @@ If this is your first time using Caddy on this machine, run `/caddy:intake` once
 /caddy:intake
 ```
 
-Your interview answers stay local on your machine. They only leave when you later run `/caddy:draft` (which sends voice + brand context to Caddy's backend and your Anthropic key for that one draft call; nothing persisted on either side).
+Your interview answers stay local on your machine. Caddy is single-billing: `/caddy:draft` reads `~/.caddy/voice.md` and `~/.caddy/brand.md` locally inside your own Claude Code session — they are never sent to Caddy's backend (the backend only validates your license).
 
 ---
 
