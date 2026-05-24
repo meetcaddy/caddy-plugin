@@ -9,7 +9,7 @@ Run a full health check of this Caddy install and report each item as
 
 This is the second half of the install story. The Terminal installer
 handles the bare-machine half; this skill checks everything that lives
-inside Claude Code (plugin, license, frameworks, voice, workspace
+inside Claude Code (plugin, license, frameworks, voice, global MCP
 wiring) which the Terminal cannot see.
 
 This skill is strictly **read-only**. It inspects state and tells you
@@ -23,8 +23,12 @@ fix it prints is a command you choose to run yourself.
    blocked by a pre-existing file — the collision case).
 3. The license token is set and is actually accepted by the server.
 4. Your voice and brand files exist and the voice sample is substantial.
-5. This workspace's MCP servers (`base-mcp`, `carl-mcp`) are wired.
+5. The global MCP servers (`base-mcp`, `carl-mcp`) are installed at their
+   fixed paths and registered at Claude Code user scope (load in every
+   session, any folder).
 6. The CARL safety hook is registered so safety rules actually fire.
+7. No leftover per-folder `.mcp.json` files are shadowing the global
+   user-scope registration (the Option-2 migration footgun).
 
 ## Execution
 
@@ -34,7 +38,6 @@ Then present the OK/FAIL/WARN lines to the user verbatim, followed by
 the SUMMARY line. Do not paraphrase the fixes.
 
 ```bash
-WORKSPACE="${WORKSPACE:-$(pwd)}"
 PASS=0; FAILN=0; WARNN=0
 ok()   { echo "PASS  $*"; PASS=$((PASS+1)); }
 fail() { echo "FAIL  $*"; FAILN=$((FAILN+1)); }
@@ -81,7 +84,7 @@ esac
 # ---------------------------------------------------------------------------
 
 echo "Caddy verify — read-only health check"
-echo "workspace: $WORKSPACE"
+echo "(global install; not folder-specific)"
 echo "----------------------------------------"
 
 # 1. Frameworks installed (support case: slash commands do not appear)
@@ -178,43 +181,45 @@ else
   fi
 fi
 
-# 5. Workspace MCP wiring (support case 7.6)
-MCP_JSON="$WORKSPACE/.mcp.json"
-if [ -z "$PY" ]; then
-  warn "python3 not found; skipping the .mcp.json inspection"
-elif [ ! -f "$MCP_JSON" ]; then
-  fail "no .mcp.json in this workspace ($WORKSPACE)"
-  echo "      Fix: from the project root run /caddy:base-setup then /caddy:carl-setup"
+# 5. Global MCP servers installed at fixed paths + registered at user scope
+#    (support case 7.6). Option-2 model: BASE installs at ~/.caddy/base,
+#    CARL at ~/.carl, each registered ONCE at Claude Code USER scope so it
+#    loads in every session from any directory. There is no per-folder
+#    .mcp.json to inspect. A server is healthy only if BOTH its fixed
+#    index.js exists on disk AND it is registered at user scope.
+BASE_IDX="$HOME/.caddy/base/.base/base-mcp/index.js"
+CARL_IDX="$HOME/.carl/carl-mcp/index.js"
+CLAUDE_BIN="$(command -v claude || true)"
+
+check_global_mcp() {
+  # $1 = server name (base-mcp|carl-mcp), $2 = expected index.js path
+  name="$1"; idx="$2"; onfile=0; onreg=0
+  [ -f "$idx" ] && onfile=1
+  if [ -n "$CLAUDE_BIN" ]; then
+    claude mcp get "$name" >/dev/null 2>&1 && onreg=1
+  fi
+  setup="/caddy:${name%-mcp}-setup"
+  if [ "$onfile" -eq 1 ] && [ "$onreg" -eq 1 ]; then
+    ok "$name installed ($idx) and registered at Claude Code user scope"
+  elif [ "$onfile" -eq 0 ] && [ "$onreg" -eq 0 ]; then
+    fail "$name not installed and not registered at user scope"
+    echo "      Fix: run $setup"
+  elif [ "$onfile" -eq 0 ]; then
+    fail "$name registered at user scope but its file is missing ($idx)"
+    echo "      Fix: run $setup (re-copies the server to its fixed path)"
+  else
+    fail "$name present on disk but not registered at Claude Code user scope"
+    echo "      Fix: run $setup (re-registers via claude mcp add --scope user)"
+  fi
+}
+
+if [ -z "$CLAUDE_BIN" ]; then
+  warn "the 'claude' CLI is not on PATH; checking fixed install paths only (cannot confirm user-scope registration)"
+  if [ -f "$BASE_IDX" ]; then ok "base-mcp present at $BASE_IDX"; else fail "base-mcp missing at $BASE_IDX"; echo "      Fix: run /caddy:base-setup"; fi
+  if [ -f "$CARL_IDX" ]; then ok "carl-mcp present at $CARL_IDX"; else fail "carl-mcp missing at $CARL_IDX"; echo "      Fix: run /caddy:carl-setup"; fi
 else
-  MCP_REPORT="$("$PY" - "$MCP_JSON" <<'PYEOF'
-import json,os,sys
-try:
-    data=json.load(open(sys.argv[1]))
-except Exception as e:
-    print("BADJSON %s" % e); sys.exit(0)
-srv=data.get("mcpServers",{}) or {}
-out=[]
-for name in ("base-mcp","carl-mcp"):
-    e=srv.get(name)
-    if not e:
-        out.append(name+":absent")
-    else:
-        args=e.get("args") or []
-        p=args[0] if args else None
-        out.append(name+(":ok" if p and os.path.isfile(p) else ":broken"))
-print(" ".join(out))
-PYEOF
-)"
-  case "$MCP_REPORT" in
-    BADJSON*)
-      fail ".mcp.json is not valid JSON (${MCP_REPORT#BADJSON })"
-      echo "      Fix: re-run /caddy:base-setup and /caddy:carl-setup (they rebuild it)." ;;
-    *broken*|*absent*)
-      fail "workspace MCP wiring incomplete: $MCP_REPORT"
-      echo "      Fix: from the project root run /caddy:base-setup then /caddy:carl-setup" ;;
-    *)
-      ok "workspace MCP servers wired: $MCP_REPORT" ;;
-  esac
+  check_global_mcp base-mcp "$BASE_IDX"
+  check_global_mcp carl-mcp "$CARL_IDX"
 fi
 
 # 6. CARL safety hook registered (support case 7.6 / v0.5.0 safety rules)
@@ -245,8 +250,31 @@ PYEOF
     echo "      Fix: re-run /caddy:carl-setup (it backs up and rewrites safely)."
   else
     warn "CARL safety hook not registered (safety rules will NOT fire)"
-    echo "      Fix: run /caddy:carl-setup (Step 7 registers the hook)."
+    echo "      Fix: run /caddy:carl-setup (Step 6 registers the hook)."
   fi
+fi
+
+# 7. Shadow per-folder .mcp.json files (Option-2 migration footgun, learned 2026-05-19)
+# Any per-folder .mcp.json that still references base-mcp or carl-mcp takes
+# precedence over the user-scope registration when Claude Code is launched
+# from its directory tree, and base-mcp/carl-mcp will fail to connect (-32000)
+# even though the global install is perfect. The home-level shadow
+# (~/.mcp.json) is the worst because it covers every session launched from
+# any subdir of home. Scans a few common dev roots; read-only.
+SHADOW_LIST="$( {
+  [ -f "$HOME/.mcp.json" ] && echo "$HOME/.mcp.json"
+  find "$HOME/Desktop" "$HOME/Documents" "$HOME/Downloads" "$HOME/development" "$HOME/Sites" \
+       -maxdepth 4 -name .mcp.json -type f 2>/dev/null
+} | sort -u | while read -r f; do
+  [ -f "$f" ] && grep -lE 'base-mcp|carl-mcp' "$f" 2>/dev/null
+done )"
+if [ -z "$SHADOW_LIST" ]; then
+  ok "no shadow per-folder .mcp.json files found (user-scope registration is not being shadowed)"
+else
+  fail "shadow per-folder .mcp.json files found (they will shadow the global user-scope registration):"
+  echo "$SHADOW_LIST" | sed 's/^/        /'
+  echo "      Fix: rename each to '<path>.preoption2.bak' (reversible). Restore later with:"
+  echo "      mv <path>.preoption2.bak <path>"
 fi
 
 echo "----------------------------------------"
@@ -274,5 +302,10 @@ WARN items are usable-but-worth-improving, not blockers.
   (`$CADDY_MCP_URL` or the production default) and interprets only the
   HTTP status: 401 means the token is bad/revoked, any non-401 means the
   token cleared authentication. It never prints the token.
-- Run it from your project root so the workspace MCP check (`.mcp.json`)
-  inspects the right directory; otherwise pass `WORKSPACE=/path`.
+- This is a **global** install check. BASE and CARL are installed once at
+  fixed paths (`~/.caddy/base`, `~/.carl`) and registered at Claude Code
+  user scope, so the result is the same from any directory. There is no
+  workspace folder to run it in and no `WORKSPACE` variable to set.
+- The user-scope registration check shells out to `claude mcp get`
+  (read-only; prints nothing). If the `claude` CLI is not on PATH, the
+  check degrades to a fixed-path-only check and emits a WARN.

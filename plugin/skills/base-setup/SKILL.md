@@ -1,59 +1,78 @@
 ---
-description: "Wire BASE's base-mcp server into the current Claude Code workspace. Use after installing caddy-frameworks via Homebrew, before running /base:* commands that need workspace-state queries. One-time per workspace; idempotent (safe to re-run for repair). Triggers: 'set up base', 'wire base-mcp', 'base-mcp failed', 'base-mcp not running', '.mcp.json missing base-mcp', or any base: command failing with missing-tool errors."
+description: "Wire BASE's base-mcp server so it loads in EVERY Claude Code session, machine-wide, with no workspace folder to remember. Installs base-mcp once at a fixed Caddy home (~/.caddy/base) and registers it at Claude Code user scope. Use after installing caddy-frameworks. One-time per machine; idempotent (safe to re-run for repair). Triggers: 'set up base', 'wire base-mcp', 'base-mcp failed', 'base-mcp not running', 'base-mcp missing', or any base: command failing with missing-tool errors."
 ---
 
 # /caddy:base-setup
 
-Wire the **base-mcp** server into the current workspace.
+Wire the **base-mcp** server so BASE is available in every Claude Code session, no matter which folder Claude was started from.
 
-BASE ships its global pieces via the Homebrew tap (`brew install caddy-frameworks` drops slash commands + the skill + framework files into `~/.claude/`). But base-mcp itself runs as a per-workspace stdio MCP server: a small Node.js process that Claude Code launches alongside the workspace. The server reads/writes `<workspace>/.base/data/*.json` (project lists, decision logs, operator profile, etc.), so it has to live in **this** workspace, not globally.
+BASE ships its global pieces via the framework installer (`caddy-frameworks` drops slash commands + the skill + framework files into `~/.claude/`). base-mcp itself is a small Node.js stdio MCP server. This skill installs it **once at a fixed location** (`~/.caddy/base`) and registers it at Claude Code's **user scope**, so Claude loads it in every session automatically. The customer never has to launch from a special folder.
 
-This skill replicates Stage 5a of the caddy-live customer install (the proven workspace-MCP wiring logic) so that opening a new workspace requires one command, not a recovery procedure.
+base-mcp resolves its data location from its own install path (`path.resolve(__dirname, '../..')`), so installing it at `~/.caddy/base/.base/base-mcp/` makes `~/.caddy/base` BASE's single, always-on workspace, with data at `~/.caddy/base/.base/data/`.
 
 ## Prerequisite
 
-You must have `caddy-base` installed via Homebrew (it ships the base-mcp source files):
+`caddy-base` installed via the OS package manager (it ships the base-mcp source), then `caddy-link` run so the source is readable under `~/.claude/` (macOS: `$HOME/.claude`; Windows: `%USERPROFILE%\.claude`):
 
-```bash
-brew tap meetcaddy/caddy
-brew install caddy-frameworks    # bundles caddy-base + 4 other frameworks
-caddy-link                       # symlinks files into ~/.claude/
-```
+- macOS: `brew tap meetcaddy/caddy && brew install caddy-frameworks && caddy-link`
+- Windows: `scoop bucket add caddy https://github.com/meetcaddy/scoop-caddy && scoop install caddy-frameworks && caddy-link`
 
-After `caddy-link`, the base-mcp source should be readable at `~/.claude/base-framework/packages/base-mcp/`.
+After `caddy-link`, the base-mcp source is readable at `<claude-dir>/base-framework/packages/base-mcp/`.
 
 ## What this skill does
 
-For the workspace where Claude Code was launched (the directory containing the project files):
+1. **Copy the base-mcp source** from `<claude-dir>/base-framework/packages/base-mcp/` into the fixed path `~/.caddy/base/.base/base-mcp/`.
+2. **Run `npm install`** there to fetch `@modelcontextprotocol/sdk` (only if missing).
+3. **Register base-mcp at Claude Code user scope** via `claude mcp add --scope user`, with an absolute path to the fixed `index.js`. User scope means Claude loads it in every session, every directory, with no per-folder `.mcp.json`. The registration is made idempotent by removing any existing user-scope `base-mcp` entry first, then adding fresh (so a re-run repairs a stale path cleanly).
 
-1. **Copy the base-mcp source** from `~/.claude/base-framework/packages/base-mcp/` into `<workspace>/.base/base-mcp/`.
-2. **Run `npm install`** in the new `<workspace>/.base/base-mcp/` to fetch `@modelcontextprotocol/sdk`.
-3. **Register the server** in `<workspace>/.mcp.json` with an **absolute path** to `<workspace>/.base/base-mcp/index.js`. Absolute paths are more robust than relative because Claude Code's CWD isn't guaranteed to match the workspace root (subdir launches, symlinked workspaces).
-
-The `.mcp.json` mutation handles three sub-cases idempotently:
-
-- **(a) merge:** no `base-mcp` entry exists → add one alongside existing servers (preserves `caddy.draft`, `carl-mcp`, etc.).
-- **(b) repair:** an entry exists but `args[0]` points at a non-existent file → rewrite to the correct absolute path. This is the "Arch-style failure" where registration exists but the path went stale.
-- **(c) keep:** an entry exists and works → leave alone. Safe to re-run.
+This is one global BASE workspace per machine. That is intentional: a Caddy customer has one Caddy, always on, not a separate one per folder.
 
 ## Execution
 
-Determine the workspace root first. By default it's the current working directory; if the user is in a subdir, they should `cd` to the project root before running the skill (or pass the workspace path explicitly).
+This block runs in bash on both OSes (on Windows that is the Git Bash Claude Code uses). Only the home directory, the source location, and the path-persist form differ by OS; everything after the preamble is shared.
 
 ```bash
-WORKSPACE="${WORKSPACE:-$(pwd)}"
-BASE_GLOBAL_SRC="$HOME/.claude/base-framework/packages/base-mcp"
-BASE_WORKSPACE_DIR="$WORKSPACE/.base"
+# --- OS-aware resolution preamble -------------------------------------------
+# CLAUDE_DIR  : where caddy-link placed the framework source + where Claude
+#               Code reads user config (macOS $HOME/.claude; Windows
+#               %USERPROFILE%\.claude — resolved from USERPROFILE, not $HOME,
+#               because corporate AD can redirect Git Bash $HOME to a share
+#               Claude Code never reads).
+# CADDY_HOME  : fixed Caddy home that becomes BASE's single workspace.
+# to_persist(): path form written into config / passed to node. Identity on
+#               macOS; Windows mixed-slash (cygpath -m: C:/Users/...) so node
+#               accepts it with no JSON backslash escaping.
+case "$(uname -s)" in
+  Darwin)
+    CLAUDE_DIR="$HOME/.claude"
+    CADDY_HOME="$HOME/.caddy/base"
+    to_persist() { printf '%s' "$1"; }
+    PKG_HINT="brew tap meetcaddy/caddy && brew install caddy-frameworks && caddy-link"
+    ;;
+  MINGW*|MSYS*|CYGWIN*)
+    CLAUDE_DIR="$(cygpath -u "$USERPROFILE" 2>/dev/null || printf '%s' "$HOME")/.claude"
+    CADDY_HOME="$(cygpath -u "$USERPROFILE" 2>/dev/null || printf '%s' "$HOME")/.caddy/base"
+    to_persist() { cygpath -m "$1"; }
+    PKG_HINT="scoop bucket add caddy https://github.com/meetcaddy/scoop-caddy && scoop install caddy-frameworks && caddy-link"
+    ;;
+  *)
+    echo "ERROR: unsupported OS '$(uname -s)' for /caddy:base-setup (macOS and Windows only)."
+    exit 1
+    ;;
+esac
+
+BASE_GLOBAL_SRC="$CLAUDE_DIR/base-framework/packages/base-mcp"
+BASE_WORKSPACE_DIR="$CADDY_HOME/.base"
 BASE_MCP_DIR="$BASE_WORKSPACE_DIR/base-mcp"
-WORKSPACE_MCP_JSON="$WORKSPACE/.mcp.json"
+# ---------------------------------------------------------------------------
 
 # Sanity: source must exist (caddy-link should have placed it)
 if [[ ! -d "$BASE_GLOBAL_SRC" ]]; then
-  echo "ERROR: $BASE_GLOBAL_SRC missing. Run 'brew install caddy-frameworks && caddy-link' first."
+  echo "ERROR: $BASE_GLOBAL_SRC missing. Run: $PKG_HINT"
   exit 1
 fi
 
-# Step 1: copy base-mcp into workspace
+# Step 1: copy base-mcp into the fixed Caddy home
 if [[ -f "$BASE_MCP_DIR/index.js" ]]; then
   echo "SKIP $BASE_MCP_DIR (already present)"
 else
@@ -74,77 +93,43 @@ else
   fi
 fi
 
-# Step 3: register in .mcp.json (merge / repair / keep)
+# Step 3: register base-mcp at Claude Code USER scope (loads in every session)
 BASE_MCP_INDEX="$BASE_MCP_DIR/index.js"
-PYTHON_BIN="$(command -v python3)"
-
 if [[ ! -f "$BASE_MCP_INDEX" ]]; then
   echo "ERROR: $BASE_MCP_INDEX missing after copy"
   exit 1
 fi
+BASE_MCP_INDEX_PERSIST="$(to_persist "$BASE_MCP_INDEX")"
 
-if [[ -f "$WORKSPACE_MCP_JSON" ]]; then
-  MERGE_RESULT="$("$PYTHON_BIN" -c "
-import json, os
-path = '$WORKSPACE_MCP_JSON'
-correct_index = '$BASE_MCP_INDEX'
-with open(path) as f:
-    data = json.load(f)
-servers = data.setdefault('mcpServers', {})
-existing = servers.get('base-mcp')
-action = 'unknown'
-if existing is None:
-    servers['base-mcp'] = {'type': 'stdio', 'command': 'node', 'args': [correct_index]}
-    action = 'merged'
-else:
-    args = existing.get('args') or []
-    current_path = args[0] if args else None
-    if current_path and os.path.isfile(current_path):
-        action = 'kept'
-    else:
-        servers['base-mcp'] = {'type': 'stdio', 'command': 'node', 'args': [correct_index]}
-        action = 'repaired'
-with open(path, 'w') as f:
-    json.dump(data, f, indent=2)
-print(action)
-")"
-  case "$MERGE_RESULT" in
-    merged)   echo "OK  base-mcp merged into $WORKSPACE_MCP_JSON" ;;
-    repaired) echo "OK  base-mcp repaired in $WORKSPACE_MCP_JSON (path now $BASE_MCP_INDEX)" ;;
-    kept)     echo "SKIP $WORKSPACE_MCP_JSON already has working base-mcp entry" ;;
-    *)        echo "FAIL merge unexpected result: $MERGE_RESULT"; exit 1 ;;
-  esac
+# Idempotent: drop any prior user-scope entry, then add fresh. `remove`
+# tolerates "not found"; the explicit re-add guarantees a correct path on
+# every run (this is how a stale-path repair happens now).
+claude mcp remove base-mcp --scope user >/dev/null 2>&1 || true
+if claude mcp add --scope user base-mcp -- node "$BASE_MCP_INDEX_PERSIST" >/dev/null 2>&1; then
+  echo "OK  base-mcp registered at Claude Code user scope -> $BASE_MCP_INDEX_PERSIST"
 else
-  cat > "$WORKSPACE_MCP_JSON" <<JSON_EOF
-{
-  "mcpServers": {
-    "base-mcp": {
-      "type": "stdio",
-      "command": "node",
-      "args": ["$BASE_MCP_INDEX"]
-    }
-  }
-}
-JSON_EOF
-  echo "OK  $WORKSPACE_MCP_JSON created with base-mcp registration"
+  echo "FAIL 'claude mcp add --scope user base-mcp' did not succeed."
+  echo "     Run manually: claude mcp add --scope user base-mcp -- node \"$BASE_MCP_INDEX_PERSIST\""
+  exit 1
 fi
 
 echo ""
-echo "Done. Restart Claude Code (or run /mcp) to load base-mcp in this workspace."
+echo "Done. base-mcp now loads in every Claude Code session, from any folder."
+echo "Restart Claude Code (or run /mcp) to load it now."
 ```
 
 ## After running
 
-The customer should restart Claude Code (or run `/mcp` to reload servers) so the new `base-mcp` entry in `.mcp.json` is picked up. The `/mcp` panel should then show `base-mcp ✓ connected`, and `mcp__base-mcp__*` tools become available alongside any existing `mcp__caddy*` tools.
+Restart Claude Code (or run `/mcp`). `/mcp` shows `base-mcp ✓ connected` in **every** session regardless of which directory Claude was started in, and `mcp__base-mcp__*` tools are available. There is no workspace folder to remember.
 
 ## Troubleshooting
 
-- **`base-mcp ✗ failed` after restart:** check `<workspace>/.base/base-mcp/index.js` exists and is readable. Check `<workspace>/.base/base-mcp/node_modules/@modelcontextprotocol/sdk/` exists. If either is missing, re-run this skill.
-- **`.mcp.json` already had a broken base-mcp entry:** this skill auto-repairs (case b). Re-run to fix.
-- **Multiple workspaces:** run once per workspace where you want base-mcp. Each gets its own `.base/` directory.
+- **`base-mcp ✗ failed`:** check `~/.caddy/base/.base/base-mcp/index.js` and its `node_modules/@modelcontextprotocol/sdk/` exist. If missing, re-run this skill.
+- **`base-mcp` not listed by `/mcp` at all:** confirm the user-scope registration with `claude mcp get base-mcp`. Re-run this skill to repair.
+- **Stale path after a move:** re-run this skill; Step 3 removes and re-adds, fixing the path.
 
 ## Notes
 
-- This skill is **idempotent**: safe to run multiple times. Sub-cases (b repair) and (c keep) handle re-runs cleanly.
-- The skill **does not write outside the current workspace**. No `~/.claude/` mutations, no global state changes. Customer-data-local promise preserved.
-- base-mcp dependencies (`@modelcontextprotocol/sdk`) are installed locally to the workspace via `npm install`. No global npm pollution.
+- **Idempotent**: safe to re-run; Step 3's remove-then-add repairs a stale path cleanly.
+- **One global BASE workspace** at `~/.caddy/base`, by design. Not per project folder.
+- This skill writes to `~/.caddy/base/` and adds one **user-scope** MCP entry via the `claude mcp` CLI (never by hand-editing `~/.claude.json`, which holds session/cache state). No npm global pollution; dependencies are local to `~/.caddy/base/.base/base-mcp/`.

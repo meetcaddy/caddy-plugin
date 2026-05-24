@@ -10,7 +10,9 @@ This plugin is the thin Claude Code surface for Caddy. The skills run inside you
 
 ## Prerequisite
 
-Claude Code (CLI or IDE extension) installed and authenticated.
+Claude Code installed and authenticated. You can run it in the Claude desktop app (Code mode), the CLI, or an IDE extension.
+
+**Recommended: the Claude desktop app's Code mode.** It runs Caddy at full capability with the least setup, and you do not need a separate code editor. Use Code mode specifically; regular chat and Projects cannot run Caddy.
 
 If you do not have Claude Code yet, install it first: see https://docs.claude.com/en/docs/claude-code/quickstart. Then come back here.
 
@@ -161,14 +163,14 @@ Available settings:
 
 ## BASE workspace orientation (optional companion)
 
-BASE (Builder's Automated State Engine) is a workspace orchestration framework: project tracking, decision logs, weekly/daily rituals, drift detection, structured grooming cycles. Once installed it gives Claude Code a durable "this is what my workspace IS" context. Caddy's `/caddy:base-setup` wires BASE's MCP server into a workspace; the BASE skills + slash commands themselves come from the Homebrew tap.
+BASE (Builder's Automated State Engine) is a workspace orchestration framework: project tracking, decision logs, weekly/daily rituals, drift detection, structured grooming cycles. Once installed it gives Claude Code a durable "this is what my workspace IS" context. Caddy's `/caddy:base-setup` installs BASE's MCP server once at a fixed home (`~/.caddy/base`) and registers it at Claude Code **user scope**, so it loads in every session from any folder; the BASE skills + slash commands themselves come from the Homebrew tap.
 
 ```
 /base:scaffold       # set up BASE in a new workspace
 /base:audit          # deep workspace optimization audit
 /base:groom          # structured grooming cycle (project + decision review)
 /base:status         # current workspace state snapshot
-/caddy:base-setup    # wire base-mcp into THIS workspace (one-time per workspace)
+/caddy:base-setup    # install base-mcp globally (one-time per machine)
 ```
 
 **Prerequisite (one-time per machine):** install the Caddy Homebrew tap and BASE. The `caddy-frameworks` meta-formula bundles BASE + PAUL + SEED + Skillsmith + Aegis in one install:
@@ -179,7 +181,7 @@ brew install caddy-frameworks
 caddy-link
 ```
 
-After that, run `/caddy:base-setup` once inside Claude Code from each workspace where you want BASE's `mcp__base-mcp__*` tools available. The setup is idempotent (safe to re-run) and auto-repairs broken `.mcp.json` registrations.
+After that, run `/caddy:base-setup` once inside Claude Code. It installs `base-mcp` at the fixed home `~/.caddy/base` and registers it at Claude Code **user scope**, so the `mcp__base-mcp__*` tools are available in every session from any folder — there is no per-workspace step and no folder to remember. The setup is idempotent (safe to re-run); a re-run cleanly repairs a stale registration.
 
 Upstream: `@chrisai/base@3.1.5` by Christopher Kahler (MIT).
 
@@ -187,12 +189,12 @@ Upstream: `@chrisai/base@3.1.5` by Christopher Kahler (MIT).
 
 ## CARL rule routing + decision logging (optional companion)
 
-CARL (Context Augmentation & Reinforcement Layer) is a rule-routing + decision-logging framework: it tracks which rules apply to which contexts, logs decisions per domain, and supports staged proposals with operator approval. Once installed, CARL gives Claude Code a durable "what did we already decide and why?" memory layer per workspace. Caddy's `/caddy:carl-setup` wires CARL's MCP server into a workspace; the underlying carl-core package comes from the Homebrew tap.
+CARL (Context Augmentation & Reinforcement Layer) is a rule-routing + decision-logging framework: it tracks which rules apply to which contexts, logs decisions per domain, and supports staged proposals with operator approval. Once installed, CARL gives Claude Code a durable "what did we already decide and why?" memory layer. Caddy's `/caddy:carl-setup` installs CARL's MCP server once at a fixed home (`~/.carl`) and registers it at Claude Code **user scope**, so it loads in every session from any folder; the underlying carl-core package comes from the Homebrew tap.
 
 CARL is **MCP-only** — it ships no slash commands or suite skills, just 30 MCP tools you call by name (or by asking Claude in chat). The starter set (8 v2 tools):
 
 ```
-mcp__carl-mcp__carl_v2_log_decision       # log a decision in the current workspace
+mcp__carl-mcp__carl_v2_log_decision       # log a decision in CARL state
 mcp__carl-mcp__carl_v2_search_decisions   # find past decisions by domain or text
 mcp__carl-mcp__carl_v2_get_decisions      # list decisions in a domain
 mcp__carl-mcp__carl_v2_list_domains       # see all CARL domains
@@ -202,7 +204,7 @@ mcp__carl-mcp__carl_v2_approve_proposal   # promote staged proposal to active
 mcp__carl-mcp__carl_v2_get_staged         # see what's pending approval
 ```
 
-The remaining 22 tools cover advanced cases: rule CRUD (`add_rule`, `remove_rule`, `replace_rules`), archival, domain creation/toggling, and v1 legacy tools kept for back-compat with existing CARL workspaces from caddy-live installs.
+The remaining 22 tools cover advanced cases: rule CRUD (`add_rule`, `remove_rule`, `replace_rules`), archival, domain creation/toggling, and v1 legacy tools kept for back-compat with CARL workspaces from prior installs.
 
 **Prerequisite (one-time per machine):** install the Caddy Homebrew tap — the `caddy-frameworks` meta-formula bundles CARL alongside BASE + PAUL + SEED + Skillsmith + Aegis:
 
@@ -212,9 +214,9 @@ brew install caddy-frameworks
 caddy-link
 ```
 
-After that, run `/caddy:carl-setup` once inside Claude Code from each workspace where you want CARL's `mcp__carl-mcp__*` tools available. The setup is idempotent (safe to re-run) and auto-repairs broken `.mcp.json` registrations. Each workspace gets its own `.carl/` directory (per-project decisions log + sessions).
+After that, run `/caddy:carl-setup` once inside Claude Code. It installs `carl-mcp` at the fixed home `~/.carl` and registers it at Claude Code **user scope**, so the `mcp__carl-mcp__*` tools are available in every session from any folder — there is no per-workspace step. CARL keeps one global `~/.carl/` directory (decisions log + sessions). The setup is idempotent (safe to re-run); a re-run cleanly repairs a stale registration.
 
-**Rule injection into every prompt:** `/caddy:carl-setup` automatically registers CARL's `UserPromptSubmit` hook in your Claude Code `settings.json` (with a one-time backup of the prior file), so active CARL rules inject into every prompt. No manual step — it is part of the setup skill.
+**Rule injection into every prompt, from any folder:** `/caddy:carl-setup` automatically registers CARL's `UserPromptSubmit` hook in your Claude Code `settings.json` (with a one-time backup of the prior file). Because the CARL scope lives at `~/.carl`, the hook's existing walk-up discovers it from any working directory under your home folder, so active CARL rules inject into every prompt no matter where Claude Code was launched. No manual step — it is part of the setup skill.
 
 Upstream: `carl-core@2.0.2` by Christopher Kahler (MIT). Same upstream author as BASE.
 
