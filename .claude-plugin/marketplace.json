@@ -17,7 +17,7 @@
         "url": "https://github.com/meetcaddy/caddy-plugin.git",
         "path": "plugin",
         "ref": "v0.6.0",
-        "sha": "67d75cabed274798f5b10e87271581923e22f0c6"
+        "sha": "c4c3967357ce5c7ebed04ddc32fcfe025146bd48"
       },
       "description": "Caddy. Your unfair advantage. Voice-fingerprinted drafts and operator rhythm.",
       "version": "0.6.0",
