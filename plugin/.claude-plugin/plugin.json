@@ -1,7 +1,7 @@
 {
   "name": "caddy",
   "description": "Caddy. Your unfair advantage. Voice-fingerprinted drafts and operator rhythm, running in your own Claude Code on your existing subscription.",
-  "version": "0.5.9",
+  "version": "0.6.0",
   "author": {
     "name": "Orbital Access LLC d/b/a Meet Caddy",
     "email": "hi@meetcaddy.com",
