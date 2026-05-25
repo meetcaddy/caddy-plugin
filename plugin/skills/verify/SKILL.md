@@ -280,6 +280,8 @@ fi
 echo "----------------------------------------"
 if [ "$FAILN" -eq 0 ] && [ "$WARNN" -eq 0 ]; then
   echo "SUMMARY: all clear ($PASS passed). Caddy is healthy."
+  echo ""
+  echo "Next step: run /caddy:capabilities to see everything your Caddy can do."
 elif [ "$FAILN" -eq 0 ]; then
   echo "SUMMARY: $PASS passed, $WARNN warning(s), 0 failures. Usable; address warnings above."
 else
@@ -292,6 +294,9 @@ fi
 Work top to bottom: every FAIL prints the exact command to fix it. Re-run
 `/caddy:verify` after applying fixes until the SUMMARY says all clear.
 WARN items are usable-but-worth-improving, not blockers.
+
+When the SUMMARY says all clear, run `/caddy:capabilities` to see
+everything your Caddy can do.
 
 ## Notes
 

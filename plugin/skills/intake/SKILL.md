@@ -50,7 +50,7 @@ After successful backup of both files (or only the one that exists), print a bri
 
 Once pre-flight is clean (no existing files OR customer chose `yes`/`back-up-first` AND backups succeeded), greet the customer with this framing:
 
-> I'm going to ask you a few questions about your voice and your brand. Takes about 5-10 minutes. At the end I'll write `~/.caddy/voice.md` and `~/.caddy/brand.md` to your machine, which the `/caddy:draft` skill uses to write in your voice.
+> I'm going to ask you a few questions about your voice and your brand. Takes about 30 to 60 minutes. At the end I'll write `~/.caddy/voice.md` and `~/.caddy/brand.md` to your machine, which the `/caddy:draft` skill uses to write in your voice.
 >
 > You can stop anytime — nothing gets written until we finish.
 >

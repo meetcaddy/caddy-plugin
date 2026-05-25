@@ -82,7 +82,7 @@ Caddy is single-billing: drafting and operator-rhythm work run inside your own C
 
 ## First-time setup (recommended)
 
-If this is your first time using Caddy on this machine, run `/caddy:intake` once. It interviews you for ~5-10 minutes about your voice and your brand, then writes `~/.caddy/voice.md` and `~/.caddy/brand.md` to your disk. `/caddy:draft` uses those files on every call. You can skip intake and write the markdown yourself if you prefer; the format is documented in `plugin/skills/intake/SKILL.md`.
+If this is your first time using Caddy on this machine, run `/caddy:intake` once. It interviews you for ~30 to 60 minutes about your voice and your brand, then writes `~/.caddy/voice.md` and `~/.caddy/brand.md` to your disk. `/caddy:draft` uses those files on every call. You can skip intake and write the markdown yourself if you prefer; the format is documented in `plugin/skills/intake/SKILL.md`.
 
 ```
 /caddy:intake
