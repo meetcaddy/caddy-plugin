@@ -60,7 +60,7 @@ fi
 
 echo ""
 echo "================================================================"
-echo "/caddy:upgrade — Pass 1 of 2 (framework layer)"
+echo "/caddy:upgrade, Pass 1 of 2 (framework layer)"
 echo "================================================================"
 
 echo ""
@@ -166,7 +166,7 @@ Pass 1 (this skill) updates the framework layer. Pass 2 + verification (Steps 3 
 
 **Pass 2 `/plugin update` says "already up to date":** the plugin payload had nothing newer to fetch. Skip to Step 5; the framework upgrade from Pass 1 still did real work.
 
-**`/mcp` shows a server failed after upgrade:** the most common cause is a leftover per-folder `.mcp.json` shadowing the user-scope registration (the Option 2 migration footgun). Run `/caddy:verify` — check 7 will detect any shadow file and print the exact rename command.
+**`/mcp` shows a server failed after upgrade:** the most common cause is a leftover per-folder `.mcp.json` shadowing the user-scope registration (the Option 2 migration footgun). Run `/caddy:verify`, check 7 will detect any shadow file and print the exact rename command.
 
 **Anything else:** email hi@meetcaddy.com with the exact line that failed.
 

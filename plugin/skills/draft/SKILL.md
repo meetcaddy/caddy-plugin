@@ -13,19 +13,19 @@ the work.
 
 Before drafting, read these two local files from the user's home directory:
 
-1. `~/.caddy/voice.md` — voice fingerprint markdown. If the file is missing, stop and tell the user: "I need your voice fingerprint at ~/.caddy/voice.md before I can draft in your voice. Run /caddy:intake first, or paste 200+ words of your writing into that file." Do not draft without voice content.
+1. `~/.caddy/voice.md`: voice fingerprint markdown. If the file is missing, stop and tell the user: "I need your voice fingerprint at ~/.caddy/voice.md before I can draft in your voice. Run /caddy:intake first, or paste 200+ words of your writing into that file." Do not draft without voice content.
 
-2. `~/.caddy/brand.md` — brand context markdown. If the file is missing, stop and tell the user: "I need brand context at ~/.caddy/brand.md before I can draft. Paste 100+ words about your brand into that file." Do not draft without brand content.
+2. `~/.caddy/brand.md`: brand context markdown. If the file is missing, stop and tell the user: "I need brand context at ~/.caddy/brand.md before I can draft. Paste 100+ words about your brand into that file." Do not draft without brand content.
 
 ## Inputs
 
 Assemble these five inputs:
 
-- `TOPIC` — `$ARGUMENTS` (the prompt the user typed after `/caddy:draft`; if empty, ask the user what they want drafted before proceeding)
-- `VOICE FINGERPRINT` — the full contents of `~/.caddy/voice.md`
-- `BRAND CONTEXT` — the full contents of `~/.caddy/brand.md`
-- `AUDIENCE` — only if the user named one (e.g., "for my LinkedIn network"); otherwise default to "general operator audience"
-- `LENGTH` — only if the user named a length (`short`, `medium`, or `long`); otherwise default to "medium"
+- `TOPIC`: `$ARGUMENTS` (the prompt the user typed after `/caddy:draft`; if empty, ask the user what they want drafted before proceeding)
+- `VOICE FINGERPRINT`: the full contents of `~/.caddy/voice.md`
+- `BRAND CONTEXT`: the full contents of `~/.caddy/brand.md`
+- `AUDIENCE`: only if the user named one (e.g., "for my LinkedIn network"); otherwise default to "general operator audience"
+- `LENGTH`: only if the user named a length (`short`, `medium`, or `long`); otherwise default to "medium"
 
 ## How to draft
 

@@ -131,7 +131,7 @@ Wait for the label. Do NOT generate a label from the pasted body content. The cu
    Say something like:
 
 ```
-Item 3: "Bob about Q4 budget" — Tier: this-week. Action: reply. Sound right?
+Item 3: "Bob about Q4 budget", Tier: this-week. Action: reply. Sound right?
 ```
 
 3. **Handle ambiguity with ONE clarifying question.** If the item is genuinely ambiguous (one-line paste like "John's thing", no obvious action), ask once:

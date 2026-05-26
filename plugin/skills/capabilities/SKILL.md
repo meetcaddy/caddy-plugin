@@ -17,9 +17,9 @@ This skill never makes a backend call. Pure local read of `~/.caddy/` plus the c
 
 Read these local files if they exist. Each one missing is a Day 1 signal, not a failure. Continue regardless.
 
-1. `~/.caddy/voice.md` — voice fingerprint
-2. `~/.caddy/brand.md` — brand context
-3. `~/.caddy/config.json` — connector setup
+1. `~/.caddy/voice.md`: voice fingerprint
+2. `~/.caddy/brand.md`: brand context
+3. `~/.caddy/config.json`: connector setup
 
 Compute a "maturity tier" from what's present:
 - **Day 1** = 0 or 1 of the three files present
@@ -34,17 +34,17 @@ This tier drives the personalization at the end of the output.
 
 `$ARGUMENTS` is the rest of the line after `/caddy:capabilities`. Valid second words:
 
-- (empty) — full overview (default)
-- `vs-claude` or `why` — just the price-justification contrast, no inventory
-- `planning` — drill into PAUL
-- `ideation` — drill into SEED
-- `workspace` — drill into BASE
-- `voice` — drill into the voice/draft/brand stack
-- `security` — drill into Aegis
-- `build` or `build-your-own` — drill into Skillsmith
-- `rules` — drill into CARL
-- `setup` — Day 1 activation path (2 steps to wake Caddy up)
-- `try` — one personalized next command based on the customer's maturity tier
+- (empty): full overview (default)
+- `vs-claude` or `why`: just the price-justification contrast, no inventory
+- `planning`: drill into PAUL
+- `ideation`: drill into SEED
+- `workspace`: drill into BASE
+- `voice`: drill into the voice/draft/brand stack
+- `security`: drill into Aegis
+- `build` or `build-your-own`: drill into Skillsmith
+- `rules`: drill into CARL
+- `setup`: Day 1 activation path (2 steps to wake Caddy up)
+- `try`: one personalized next command based on the customer's maturity tier
 
 Unknown second word: print the full overview and append `(unrecognized area '<word>'; showed full overview instead)`.
 

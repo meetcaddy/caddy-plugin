@@ -35,7 +35,7 @@ This block runs in bash on both OSes (on Windows that is the Git Bash Claude Cod
 # --- OS-aware resolution preamble -------------------------------------------
 # CLAUDE_DIR  : where caddy-link placed the framework source + where Claude
 #               Code reads user config (macOS $HOME/.claude; Windows
-#               %USERPROFILE%\.claude — resolved from USERPROFILE, not $HOME,
+#               %USERPROFILE%\.claude, resolved from USERPROFILE, not $HOME,
 #               because corporate AD can redirect Git Bash $HOME to a share
 #               Claude Code never reads).
 # CADDY_HOME  : fixed Caddy home that becomes BASE's single workspace.

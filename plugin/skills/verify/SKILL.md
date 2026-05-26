@@ -20,7 +20,7 @@ fix it prints is a command you choose to run yourself.
 
 1. The six Caddy frameworks are installed (Homebrew on macOS, Scoop on Windows).
 2. The framework links in the Claude config dir exist (and on macOS are not
-   blocked by a pre-existing file — the collision case).
+   blocked by a pre-existing file, the collision case).
 3. The license token is set and is actually accepted by the server.
 4. Your voice and brand files exist and the voice sample is substantial.
 5. The global MCP servers (`base-mcp`, `carl-mcp`) are installed at their
@@ -76,14 +76,14 @@ case "$(uname -s)" in
     OS=other
     PY="$(command -v python3 || true)"
     CLAUDE_DIR="$HOME/.claude"; CADDY_DIR="$HOME/.caddy"
-    FW_FIX="(unsupported OS — macOS or Windows only)"
+    FW_FIX="(unsupported OS, macOS or Windows only)"
     TOKEN_HINT="Add it to your shell profile to make it stick."
     fw_installed() { return 1; }
     ;;
 esac
 # ---------------------------------------------------------------------------
 
-echo "Caddy verify — read-only health check"
+echo "Caddy verify, read-only health check"
 echo "(global install; not folder-specific)"
 echo "----------------------------------------"
 
@@ -193,22 +193,46 @@ CLAUDE_BIN="$(command -v claude || true)"
 
 check_global_mcp() {
   # $1 = server name (base-mcp|carl-mcp), $2 = expected index.js path
-  name="$1"; idx="$2"; onfile=0; onreg=0
+  # Surfaces the ACTUAL resolved scope (user / project / local), not just
+  # presence. A project-scope registration via a shadow .mcp.json was the
+  # 2026-05-25 footgun where `claude mcp get` succeeded (because something
+  # was registered) but the registration was the wrong scope; the per-server
+  # PASS line falsely said "user scope". We now parse `claude mcp get`'s
+  # "Scope:" line and surface it.
+  name="$1"; idx="$2"; onfile=0; onreg=0; regscope=""
   [ -f "$idx" ] && onfile=1
   if [ -n "$CLAUDE_BIN" ]; then
-    claude mcp get "$name" >/dev/null 2>&1 && onreg=1
+    regscope="$(claude mcp get "$name" 2>/dev/null \
+      | grep -E '^[[:space:]]*Scope:' | head -1 \
+      | sed -E 's/^[[:space:]]*Scope:[[:space:]]*//' | tr -d '\r')"
+    [ -n "$regscope" ] && onreg=1
   fi
   setup="/caddy:${name%-mcp}-setup"
   if [ "$onfile" -eq 1 ] && [ "$onreg" -eq 1 ]; then
-    ok "$name installed ($idx) and registered at Claude Code user scope"
+    case "$regscope" in
+      *[Uu]ser*)
+        ok "$name installed and registered at user scope ($regscope)"
+        ;;
+      *[Pp]roject*)
+        warn "$name installed but registered at PROJECT scope ($regscope); will only load from this folder tree, not from any folder"
+        echo "      Fix: run $setup (re-registers at user scope via claude mcp add --scope user)"
+        ;;
+      *[Ll]ocal*)
+        warn "$name installed but registered at LOCAL scope ($regscope); non-standard for Caddy"
+        echo "      Fix: run $setup (re-registers at user scope)"
+        ;;
+      *)
+        ok "$name installed and registered ($regscope)"
+        ;;
+    esac
   elif [ "$onfile" -eq 0 ] && [ "$onreg" -eq 0 ]; then
-    fail "$name not installed and not registered at user scope"
+    fail "$name not installed and not registered with Claude Code"
     echo "      Fix: run $setup"
   elif [ "$onfile" -eq 0 ]; then
-    fail "$name registered at user scope but its file is missing ($idx)"
+    fail "$name registered ($regscope) but its file is missing ($idx)"
     echo "      Fix: run $setup (re-copies the server to its fixed path)"
   else
-    fail "$name present on disk but not registered at Claude Code user scope"
+    fail "$name present on disk but not registered with Claude Code"
     echo "      Fix: run $setup (re-registers via claude mcp add --scope user)"
   fi
 }

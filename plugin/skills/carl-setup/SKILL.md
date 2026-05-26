@@ -61,7 +61,7 @@ This block runs in bash on both OSes (on Windows that is the Git Bash that Claud
 # --- OS-aware resolution preamble -------------------------------------------
 # Resolves per-OS:
 #   CADDY_USER_HOME : the home directory that becomes CARL's single workspace
-#                     (macOS $HOME; Windows %USERPROFILE% — resolved from
+#                     (macOS $HOME; Windows %USERPROFILE%, resolved from
 #                     USERPROFILE, not $HOME, because corporate AD can redirect
 #                     Git Bash $HOME to a share Claude Code never reads).
 #   CARL_PKG        : install prefix; CARL source lives at
@@ -141,7 +141,7 @@ else
   echo "OK  carl-mcp source copied to $CARL_MCP_DIR"
 fi
 
-# Step 2: seed workspace template (carl.json + sessions/) — idempotent
+# Step 2: seed workspace template (carl.json + sessions/), idempotent
 if [[ -f "$CARL_WORKSPACE_DIR/carl.json" ]]; then
   echo "SKIP $CARL_WORKSPACE_DIR/carl.json (already exists; CARL state preserved)"
 else
@@ -303,7 +303,7 @@ echo "Done. carl-mcp now loads in every Claude Code session, from any folder."
 echo "      Seeded caddy-safety rules will activate on the next prompt submission."
 echo "      Restart Claude Code (or run /mcp) to load it now."
 echo ""
-echo "Starter tools (8 of CARL's 30; v2 surface — see plugin README for full set):"
+echo "Starter tools (8 of CARL's 30; v2 surface, see plugin README for full set):"
 echo "  carl_v2_log_decision        carl_v2_search_decisions"
 echo "  carl_v2_get_decisions       carl_v2_list_domains"
 echo "  carl_v2_get_config          carl_v2_stage_proposal"
@@ -318,14 +318,14 @@ Restart Claude Code (or run `/mcp`). `/mcp` shows `carl-mcp ✓ connected` in **
 
 CARL ships **30 MCP tools**. We recommend starting with these **8 v2 tools** (the operator-rhythm core):
 
-1. **carl_v2_log_decision** — log a decision in CARL state
-2. **carl_v2_search_decisions** — find past decisions by domain or text
-3. **carl_v2_get_decisions** — list decisions in a domain
-4. **carl_v2_list_domains** — see all CARL domains
-5. **carl_v2_get_config** — read current CARL config + active rules
-6. **carl_v2_stage_proposal** — stage a new rule for approval
-7. **carl_v2_approve_proposal** — promote staged proposal to active rule
-8. **carl_v2_get_staged** — see what's pending approval
+1. **carl_v2_log_decision**: log a decision in CARL state
+2. **carl_v2_search_decisions**: find past decisions by domain or text
+3. **carl_v2_get_decisions**: list decisions in a domain
+4. **carl_v2_list_domains**: see all CARL domains
+5. **carl_v2_get_config**: read current CARL config + active rules
+6. **carl_v2_stage_proposal**: stage a new rule for approval
+7. **carl_v2_approve_proposal**: promote staged proposal to active rule
+8. **carl_v2_get_staged**: see what's pending approval
 
 The remaining 22 tools (v1 legacy + v2 advanced: add_rule, remove_rule, replace_rules, archive_decision, update_config, etc.) are available via the same `mcp__carl-mcp__*` surface. v1 tools are kept for back-compat with existing CARL workspaces from prior installs.
 
@@ -343,6 +343,6 @@ The remaining 22 tools (v1 legacy + v2 advanced: add_rule, remove_rule, replace_
 - **One global CARL workspace** at `~/.carl`, by design. Not per project folder. (BASE is at `~/.caddy/base`; CARL at `~/.carl` so the unpatched upstream hook's walk-up resolves it from any directory under home.)
 - The skill writes to three locations and adds one **user-scope** MCP entry via the `claude mcp` CLI (never by hand-editing `~/.claude.json`, which holds session/cache state):
   - `~/.carl/` (the single global CARL state, including the Caddy sidecar at `~/.carl/caddy-carl-state.json`)
-  - `~/.claude/settings.json` (single entry: UserPromptSubmit hook for carl-hook.py — required for seeded rules to inject into prompts). A one-time backup is preserved at `~/.claude/settings.json.pre-caddy-carl.bak` before the first merge.
+  - `~/.claude/settings.json` (single entry: UserPromptSubmit hook for carl-hook.py, required for seeded rules to inject into prompts). A one-time backup is preserved at `~/.claude/settings.json.pre-caddy-carl.bak` before the first merge.
   - the user-scope MCP registration (via `claude mcp add --scope user`)
 - No npm global pollution. carl-mcp dependencies (`@modelcontextprotocol/sdk`) are installed locally to `~/.carl/carl-mcp/`.

@@ -1,5 +1,5 @@
 ---
-description: View or change Caddy plugin settings stored at ~/.caddy/config.json. Use when the user types /caddy:settings followed by show, set <key> <value>, or unset <key>. Local-only — no backend round-trip, no MCP call.
+description: View or change Caddy plugin settings stored at ~/.caddy/config.json. Use when the user types /caddy:settings followed by show, set <key> <value>, or unset <key>. Local-only: no backend round-trip, no MCP call.
 ---
 
 # Caddy: Settings
@@ -11,9 +11,9 @@ Manage the local Caddy plugin configuration at `~/.caddy/config.json`. This skil
 `$ARGUMENTS` is the rest of the line the user typed after `/caddy:settings`. Parse it as a subcommand plus optional arguments.
 
 Three valid forms:
-- `show` — display current config
-- `set <key> <value>` — persist a setting
-- `unset <key>` — clear a setting
+- `show`: display current config
+- `set <key> <value>`: persist a setting
+- `unset <key>`: clear a setting
 
 If `$ARGUMENTS` is empty, or the first token is not one of `show`, `set`, `unset`, print the usage block and stop. Do not proceed.
 
@@ -150,7 +150,7 @@ If the user typed an unknown subcommand (`/caddy:settings foo`), prepend the lin
 
 ## Examples (for the assistant to follow)
 
-**Example 1 — empty show:**
+**Example 1: empty show:**
 
 User: `/caddy:settings show`
 
@@ -165,7 +165,7 @@ Config file: ~/.caddy/config.json
 Settable keys: connector
 ```
 
-**Example 2 — set, then show:**
+**Example 2: set, then show:**
 
 User: `/caddy:settings set connector anthropic-connector`
 
@@ -195,7 +195,7 @@ Settable keys: connector
 
 (Note: `schemaVersion` is NOT listed in `show` output.)
 
-**Example 3 — unset:**
+**Example 3: unset:**
 
 User: `/caddy:settings unset connector`
 
@@ -211,7 +211,7 @@ File now contains:
 }
 ```
 
-**Example 4 — invalid key:**
+**Example 4: invalid key:**
 
 User: `/caddy:settings set foo bar`
 
@@ -222,7 +222,7 @@ unknown setting key 'foo'; valid keys: connector
 
 (No file write.)
 
-**Example 5 — invalid value:**
+**Example 5: invalid value:**
 
 User: `/caddy:settings set connector banana`
 
@@ -233,7 +233,7 @@ invalid value 'banana' for 'connector'; valid values: anthropic-connector, copy-
 
 (No file write.)
 
-**Example 6 — write failure:**
+**Example 6: write failure:**
 
 User: `/caddy:settings set connector anthropic-connector`
 

@@ -6,7 +6,7 @@ description: Voice + brand fingerprint capture for Caddy. Use when the user type
 
 Capture the operator's voice fingerprint and brand context through a structured interview, then write `~/.caddy/voice.md` and `~/.caddy/brand.md` to disk. This skill is purely client-side: no MCP tool calls, no backend round-trip, no network access. Customer data stays on the customer's machine.
 
-The two files produced by intake are consumed by `/caddy:draft` on every call (the skill reads them and passes their contents as MCP tool arguments to Caddy's backend). If the customer never runs intake, they can write voice.md and brand.md manually using the schemas documented below — intake is a convenience, not a requirement.
+The two files produced by intake are consumed by `/caddy:draft` on every call (the skill reads them and passes their contents as MCP tool arguments to Caddy's backend). If the customer never runs intake, they can write voice.md and brand.md manually using the schemas documented below, intake is a convenience, not a requirement.
 
 ## Pre-flight (overwrite safety)
 
@@ -35,7 +35,7 @@ Where `{ISO-ms-timestamp}` is the current date and time at millisecond precision
 
 If a backup filename collides (i.e., a file with that exact timestamp already exists, which is rare but possible on very rapid re-runs), append a discriminator: `-1`, `-2`, etc., until you find an unused name.
 
-**Backup atomicity (load-bearing — do not skip):** If both `voice.md` and `brand.md` exist and the customer chose `back-up-first`, BOTH backups must succeed before the interview starts. The flow:
+**Backup atomicity (load-bearing, do not skip):** If both `voice.md` and `brand.md` exist and the customer chose `back-up-first`, BOTH backups must succeed before the interview starts. The flow:
 
 1. Read existing `~/.caddy/voice.md` content. Write it to the backup path.
 2. If that Write fails (permission denied, disk full, etc.): print the error per the write-failure template below, abort the interview, no further action.
@@ -52,7 +52,7 @@ Once pre-flight is clean (no existing files OR customer chose `yes`/`back-up-fir
 
 > I'm going to ask you a few questions about your voice and your brand. Takes about 30 to 60 minutes. At the end I'll write `~/.caddy/voice.md` and `~/.caddy/brand.md` to your machine, which the `/caddy:draft` skill uses to write in your voice.
 >
-> You can stop anytime — nothing gets written until we finish.
+> You can stop anytime, nothing gets written until we finish.
 >
 > Your answers stay LOCAL on your machine in those two files. They only leave your machine if you later run `/caddy:draft`, which sends voice + brand context to Caddy's backend and your Anthropic key for that one draft call. Nothing persisted on either side.
 >
@@ -64,22 +64,22 @@ Then immediately ask Q1. Do not list all the questions; ask them ONE AT A TIME.
 
 ## Voice interview (6 questions)
 
-Ask each question and wait for the customer's answer before asking the next. Preserve the customer's verbatim phrasing in your internal working memory — their actual words are the source of truth for the fingerprint.
+Ask each question and wait for the customer's answer before asking the next. Preserve the customer's verbatim phrasing in your internal working memory, their actual words are the source of truth for the fingerprint.
 
 ### Q1
-> What do you do? (job, business, role — in your own words, not a LinkedIn headline)
+> What do you do? (job, business, role, in your own words, not a LinkedIn headline)
 
 ### Q2
 > Who do you write for most of the time? (audience: clients, peers, customers, network)
 
 ### Q3
-> Pick a recent thing you wrote — an email, a LinkedIn post, a message to a friend — and tell me about a moment from your real work that captures who you are. Specific moments work better than abstractions.
+> Pick a recent thing you wrote, an email, a LinkedIn post, a message to a friend, and tell me about a moment from your real work that captures who you are. Specific moments work better than abstractions.
 
 ### Q4
 > Describe yourself at a backyard barbecue talking about what you do. Talk like you actually would, not how you'd write a bio.
 
 ### Q5
-> What words or phrases do you NEVER want to use in your writing? Could be specific words you hate, or whole categories of style you avoid (corporate jargon, LinkedIn-thought-leader cadence, overly clinical language, anything else). Tell me what specifically grates on you when you read it — your list, not a generic one.
+> What words or phrases do you NEVER want to use in your writing? Could be specific words you hate, or whole categories of style you avoid (corporate jargon, LinkedIn-thought-leader cadence, overly clinical language, anything else). Tell me what specifically grates on you when you read it, your list, not a generic one.
 
 ### Q6
 > What's a line or story about your work that lands every time you tell it? The thing people remember after the conversation.
@@ -89,7 +89,7 @@ Ask each question and wait for the customer's answer before asking the next. Pre
 Same one-at-a-time cadence as voice. Continue waiting for each answer before the next question.
 
 ### B1
-> What does your business or work do, in one or two plain-spoken sentences? (Not the pitch — the actual thing.)
+> What does your business or work do, in one or two plain-spoken sentences? (Not the pitch, the actual thing.)
 
 ### B2
 > Who is your audience? (Be specific: not 'business owners', but 'plumbers and HVAC techs who run their own shop'.)
@@ -98,7 +98,7 @@ Same one-at-a-time cadence as voice. Continue waiting for each answer before the
 > What's the one thing you do better or differently than everyone else in your space?
 
 ### B4
-> What's the promise — explicit or implicit — that your audience hears when they engage with you?
+> What's the promise, explicit or implicit, that your audience hears when they engage with you?
 
 ## Synthesis
 
@@ -118,7 +118,7 @@ Target: voice.md should be ≥600 words; brand.md should be ≥300 words.
 
 If, after synthesizing, either file falls short:
 
-1. **First time only:** prompt the customer once to expand: `Want to expand on anything? Your answers are pretty brief and the voice fingerprint works better with more material. Specifically Q{N} would benefit from more detail. Or it's fine to proceed — your call.`
+1. **First time only:** prompt the customer once to expand: `Want to expand on anything? Your answers are pretty brief and the voice fingerprint works better with more material. Specifically Q{N} would benefit from more detail. Or it's fine to proceed, your call.`
 2. **If still under floor after the one expand-prompt:** do NOT silently ship sub-minimum and do NOT refuse outright. Surface explicitly in the pre-write confirmation:
 
 > Heads up: voice.md came in at N words (target 600+). The fingerprint will still work but draft quality may be more generic. You can re-run /caddy:intake later with longer answers if you want sharper voice. Proceed? (yes / cancel)
@@ -176,7 +176,7 @@ Do NOT prompt to confirm the cancellation. Trust the customer's signal. Do NOT w
 **Purpose:** Caddy's voice fingerprint for {customer name or business, if shared}. /caddy:draft uses this as the benchmark for everything it writes.
 
 ## What makes this voice work (the rules)
-{derived from Q4 + Q5 — a numbered list of 5-9 voice rules in the customer's own phrasing wherever possible. Example rules: "Plain-spoken cadence — contractions, sentence fragments where natural", "No setup-contrast-button-bow structure", "Specific moments beat abstractions every time", "Never use: {Q5 slop list verbatim}"}
+{derived from Q4 + Q5, a numbered list of 5-9 voice rules in the customer's own phrasing wherever possible. Example rules: "Plain-spoken cadence, contractions, sentence fragments where natural", "No setup-contrast-button-bow structure", "Specific moments beat abstractions every time", "Never use: {Q5 slop list verbatim}"}
 
 ## Benchmark answers
 ### What I do
@@ -186,13 +186,13 @@ Do NOT prompt to confirm the cancellation. Trust the customer's signal. Do NOT w
 {verbatim Q2 answer}
 
 ### A moment from real work
-{verbatim Q3 answer — this is keystone material}
+{verbatim Q3 answer, this is keystone material}
 
 ### How I describe what I do at a barbecue
 {verbatim Q4 answer}
 
 ### The line that always lands
-{verbatim Q6 answer — also keystone material}
+{verbatim Q6 answer, also keystone material}
 
 ## Keystone proof points
 {the 2-3 strongest specific stories or framings from Q3 + Q6, distilled into reusable lines that future drafts can echo. These are the lines /caddy:draft should be most likely to surface.}
@@ -213,16 +213,16 @@ Do NOT prompt to confirm the cancellation. Trust the customer's signal. Do NOT w
 **Purpose:** Caddy's brand context for {customer business name}. /caddy:draft uses this to keep messaging on-brand and audience-appropriate.
 
 ## What this is
-{derived from B1 — one-paragraph description of what the customer's work/business does, in their own words from B1}
+{derived from B1, one-paragraph description of what the customer's work/business does, in their own words from B1}
 
 ## Audience
-{from B2 — specific audience description; preserve the customer's verbatim specificity}
+{from B2, specific audience description; preserve the customer's verbatim specificity}
 
 ## What we do differently
-{from B3 — the customer's stated differentiator, preserved verbatim where crisp}
+{from B3, the customer's stated differentiator, preserved verbatim where crisp}
 
 ## The promise
-{from B4 — explicit or implicit promise the audience hears}
+{from B4, explicit or implicit promise the audience hears}
 
 ## Voice samples (good)
 {2-3 do-examples drawn from the customer's actual answers + Q3 moment + Q6 keystone line}
@@ -246,13 +246,13 @@ Do NOT prompt to confirm the cancellation. Trust the customer's signal. Do NOT w
 These are surfaced to the customer when relevant (in the framing or in support conversations); they're documented here so any operator or support engineer can reference them.
 
 ### Non-determinism
-Running `/caddy:intake` twice with identical answers will produce DIFFERENT voice.md and brand.md output. Claude's synthesis is stochastic by nature. This is expected behavior, not a bug. If a customer wants consistent voice.md across re-runs, they should paste the SAME answers verbatim AND use the back-up-first option to preserve the original — then compare manually and choose which to keep.
+Running `/caddy:intake` twice with identical answers will produce DIFFERENT voice.md and brand.md output. Claude's synthesis is stochastic by nature. This is expected behavior, not a bug. If a customer wants consistent voice.md across re-runs, they should paste the SAME answers verbatim AND use the back-up-first option to preserve the original, then compare manually and choose which to keep.
 
 ### Backup accumulation
 If a customer re-runs `/caddy:intake` with `back-up-first` multiple times, they'll accumulate multiple `~/.caddy/voice.md.bak-{timestamp}` and `~/.caddy/brand.md.bak-{timestamp}` files. Caddy does NOT auto-clean these. The customer should delete old `.bak-*` files manually when they're confident in the current voice.md. Pattern for cleanup: `rm ~/.caddy/*.bak-*` (or selectively delete by timestamp).
 
 ### No mid-session resume
-If a customer's Claude Code session crashes mid-interview, their answers are NOT preserved. The customer will need to restart `/caddy:intake` and re-answer from Q1. The conversation transcript in the customer's terminal scrollback may have their previous answers — they can copy them to a notes app if they want to paste them back in faster on the retry.
+If a customer's Claude Code session crashes mid-interview, their answers are NOT preserved. The customer will need to restart `/caddy:intake` and re-answer from Q1. The conversation transcript in the customer's terminal scrollback may have their previous answers, they can copy them to a notes app if they want to paste them back in faster on the retry.
 
 ## Hard rules
 

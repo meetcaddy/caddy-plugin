@@ -222,7 +222,7 @@ If either subsection is empty, include the heading and one line "None this round
 ### 7. `## Open threads`
 1 to 3 unresolved questions, follow-up needed, things to circle back on. Customer-supplied identifiers only. If nothing is open, omit the section or read "None flagged."
 
-### 8. `## Triage suggestions` (AC-8 — OUTPUT-ONLY, NO write-through)
+### 8. `## Triage suggestions` (AC-8, OUTPUT-ONLY, NO write-through)
 Claude proposes triage entries the customer could add to `~/.caddy/triage/triage-YYYY-MM-DD.md`. List each as a bullet with proposed tier + action:
 
 ```
@@ -434,7 +434,7 @@ For skills that don't fit the read-then-write or interactive-conversation-loop p
 - This skill NEVER invokes `plugin:caddy:caddy` or any other backend tool. Pure local-file.
 - This skill NEVER uses Bash. Read and Write tools only.
 - This skill NEVER writes outside `~/.caddy/briefs/`.
-- This skill NEVER writes to `~/.caddy/triage/` — triage suggestions are output-only in the followup brief; customer adds to triage manually.
+- This skill NEVER writes to `~/.caddy/triage/`, triage suggestions are output-only in the followup brief; customer adds to triage manually.
 - This skill NEVER includes pasted body content in the written brief file. Customer-supplied identifiers + Claude-synthesized content are the only sources.
 - This skill NEVER skips the backup write on APPEND or OVERWRITE paths.
 - This skill NEVER uses em dashes or double dashes in the written brief file.

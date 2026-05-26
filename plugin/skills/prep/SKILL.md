@@ -113,7 +113,7 @@ Attempt to Read each input via the Read tool. Track present/missing for the meta
 
 ---
 
-## Triage-entry filtering for the meeting (AC-4 — NEW vs Plan 7-03)
+## Triage-entry filtering for the meeting (AC-4, NEW vs Plan 7-03)
 
 If today's triage file exists (or the most recent fallback), scan the `## Today (urgent + actionable)` and `## This week` sections.
 
