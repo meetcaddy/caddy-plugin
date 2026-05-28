@@ -15,18 +15,18 @@ This skill never makes a backend call. Pure local read of `~/.caddy/` plus the c
 
 ## Pre-flight
 
-Read these local files if they exist. Each one missing is a Day 1 signal, not a failure. Continue regardless.
+Read this local file if it exists. Missing is a Day 1 signal, not a failure. Continue regardless.
 
-1. `~/.caddy/voice.md`: voice fingerprint
-2. `~/.caddy/brand.md`: brand context
-3. `~/.caddy/config.json`: connector setup
+`~/.caddy/voice.md`: voice fingerprint produced by `/caddy:intake`. Intake also writes `~/.caddy/brand.md` in the same pass, so voice.md presence is a reliable proxy for "intake done."
 
-Compute a "maturity tier" from what's present:
-- **Day 1** = 0 or 1 of the three files present
-- **Activated** = 2 of the three present
-- **Compounding** = all 3 present AND `~/.caddy/voice.md` is at least 500 bytes (proxy for a serious intake, not a stub)
+Compute a "maturity tier" from voice.md state:
+- **Day 1** = voice.md missing (intake not yet run)
+- **Activated** = voice.md exists, under 500 bytes (stub intake; ran it but answers were thin)
+- **Compounding** = voice.md exists, 500 bytes or more (substantive intake)
 
-The voice.md size check is the engagement signal. A real intake produces a multi-paragraph fingerprint; a stub file is a few sentences. We do not need to scan global memory for this; voice.md depth is a reliable proxy for "this customer has invested time."
+The voice.md size check is the engagement signal. A real intake produces a multi-paragraph fingerprint; a stub file is a few sentences.
+
+We do NOT check claude.ai connector state. Anthropic connectors (Gmail, Calendar, Drive) live in the customer's claude.ai account at Settings, Connectors. That state is not readable from local files; we do not pretend to detect it. `~/.caddy/config.json` exists for Caddy's own settings (`/caddy:settings`) and is unrelated to claude.ai connectors.
 
 This tier drives the personalization at the end of the output.
 
@@ -77,90 +77,114 @@ WHY THIS COSTS MORE THAN RAW CLAUDE
 ═══════════════════════════════════════════════════════════════
 Claude is the engine. Caddy is the car.
 
-Raw Claude or Claude Code gives you a powerful AI in a blank box.
-Every conversation starts from zero. Every workflow is one you have
-to invent and re-invent. The AI doesn't know who you are, how you
-write, what your business does, or what you decided last Tuesday.
+Claude does a lot already. It connects to your inbox, calendar,
+and Drive. It has memory. It improves as you use it. None of
+that is what Caddy adds.
 
-Caddy is the operating system that wraps that engine into a business.
+What Caddy adds: opinionated, repeatable, auditable structure
+on top of Claude. Your voice, your brand, your workflows, your
+decisions, all captured as files YOU OWN. Editable. Exportable.
+Yours.
 
-  CLAUDE ALONE                 →    YOUR CADDY
+  CLAUDE ALONE                       →    YOUR CADDY
   ───────────────────────────────────────────────────────────────
-  Generic LLM voice            →    Writes in YOUR voice from a
-                                    fingerprint you trained once
-  Can't touch your inbox       →    /triage drafts every reply in
-                                    your voice and your context
-  Forgets every conversation   →    Remembers every commitment,
-                                    decision, preference across
-                                    sessions
-  No daily ritual              →    /start-of-day chains brief +
-                                    triage + meeting prep in one
-                                    command
-  No brand context             →    Knows your positioning,
-                                    vocabulary, taboo phrases
-  You invent every prompt      →    140+ pre-built skills, commands,
-                                    and tools wired together
-  No project framework         →    PAUL ships real software in
-                                    phases with audit trails
-  No security audit            →    Enterprise-grade security audit
-                                    pipeline, the kind real
-                                    consulting firms charge 5
-                                    figures for
+  You explain how you write          →    Voice fingerprint lives in
+  every time you ask for a draft          ~/.caddy/voice.md. Every
+                                          draft uses it automatically.
+                                          You can read, edit, version,
+                                          and port the file.
+  Ad-hoc inbox handling: every       →    /triage runs the same
+  session starts from "how do I            structured workflow every
+  want this categorized today"             time. Categorizes,
+                                          prioritizes, drafts in your
+                                          voice, same shape every day.
+  Memory Claude decides to keep      →    Decisions log YOU control:
+                                          CARL captures what you decided
+                                          and why, with recall keywords.
+                                          Searchable, exportable,
+                                          editable. Not a black box.
+  No structured daily rhythm         →    /start-of-day chains brief +
+                                          triage + meeting prep in one
+                                          command. Same ritual every
+                                          morning.
+  Brand context you re-explain       →    Brand context lives in
+                                          ~/.caddy/brand.md. Applied
+                                          automatically without
+                                          re-prompting.
+  You invent every workflow          →    140+ pre-built skills,
+                                          commands, and tools across
+                                          7 interlocking systems. Don't
+                                          reinvent each time.
+  No project framework               →    PAUL: structured phases,
+                                          plans, builds, verifications.
+                                          Audit trail. Non-coders ship
+                                          real software.
+  No built-in security audit         →    Aegis: enterprise-grade audit
+                                          pipeline, the kind real
+                                          consulting firms charge 5
+                                          figures for, built in.
 
 You're not paying for AI. Anthropic sells you that.
-You're paying for the operating system that makes AI run your business.
+You're paying for the structure, repeatability, and ownership
+that turn AI into your business operating system.
 
 ═══════════════════════════════════════════════════════════════
 THE 140+ PIECE PROOF
 ═══════════════════════════════════════════════════════════════
 Seven interlocking systems. All yours. All local. One-time license.
 
-▸ THE DAILY LAYER  (13 Caddy plugin skills)
-   /draft  /triage  /prep  /followup  /start-of-day  /intake
-   /verify  /graphify  /capabilities  /settings  /base-setup
-   /carl-setup  /upgrade
+▸ THE DAILY LAYER  (13 commands)
+   Your morning brief, inbox triage, meeting prep, follow-up
+   recaps, voice-fingerprinted drafts. The rituals that run your
+   week, built once, used forever.
 
 ▸ PLAN AND BUILD  (PAUL: 28 commands)
-   The framework that lets a non-coder ship real software.
-   /paul:init  /paul:plan  /paul:apply  /paul:verify  /paul:audit
-   ...23 more for phases, milestones, research, handoffs
+   For when "I want to ship X" needs to become phases, plans,
+   builds, verifications. The framework that lets a non-coder
+   ship real software with an audit trail.
 
 ▸ IDEATE BEFORE YOU COMMIT  (SEED: 27 commands)
-   Half-formed ideas in. Scoped buildable projects out.
-   /seed:seed  /seed:tasks:ideate  /seed:tasks:graduate
-   ...24 more for typed templates and planning quality
+   For when an idea is half-formed and needs scoping before you
+   commit calendar time. Turns rough thoughts into buildable
+   projects.
 
 ▸ YOUR AI'S MEMORY  (BASE: 26 commands)
-   The reason your Caddy gets sharper every week.
-   /base:pulse  /base:weekly  /base:groom  /base:orientation
-   /base:audit ...21 more for surfaces, domains, history
+   Workspace orientation, operator profile, weekly review
+   rituals, decision surfaces. The thing that makes your Caddy
+   yours instead of a generic assistant. This is where Day 365
+   Caddy gets sharper than Day 1 Caddy.
 
 ▸ BUILD YOUR OWN  (Skillsmith: 12 commands)
-   Your business has workflows nobody else does. Build skills for them.
-   /skillsmith:skillsmith  /skillsmith:tasks:scaffold
-   /skillsmith:tasks:audit  ...9 more
+   When your business has workflows nobody else has, Skillsmith
+   helps you build new Caddy skills tailored to you. Your AI,
+   your toolset.
 
 ▸ SECURITY  (Aegis: 10 commands)
-   /aegis:audit  /aegis:remediate  /aegis:playbook  /aegis:transform
-   ...6 more for guardrails, reports, validation
+   Code audits, vulnerability scanning, security review
+   playbooks. Enterprise-grade work, built in. Five-figure
+   consulting at one-time license cost.
 
 ▸ RULES ENGINE  (CARL: 30 MCP tools)
-   carl_log_decision  carl_search_decisions  carl_create_domain
-   carl_v2_replace_rules  ...26 more for proposals, hygiene, staging
+   Your decisions log with rationale and recall keywords.
+   Domain-scoped rules that fire in every Claude prompt. The
+   auditable trail of "we decided X because Y."
 
 ═══════════════════════════════════════════════════════════════
 THE COMPOUNDING MOAT
 ═══════════════════════════════════════════════════════════════
-Every session adds to your memory.
-Every decision sharpens your rules.
-Every draft trains your voice.
+Claude improves over time. Caddy improves on YOUR terms.
 
-Raw Claude is the same on Day 1 and Day 365.
-Your Caddy on Day 365 is materially smarter than anyone else's,
-because it has 365 days of YOUR work shaping how it answers.
+Every voice update is a file change in ~/.caddy/voice.md.
+Every decision lands in CARL with rationale and recall keywords.
+Every workspace orientation lives in BASE for that project's life.
 
-This is the part competitors cannot copy.
-The tech is buyable. The trained context is not.
+You can read it. Edit it. Export it. Port it to a new machine.
+Version-control it. Roll back. Share it with your team.
+
+Claude's memory is for Claude.
+Your Caddy's memory is YOURS.
+
+That's the moat. Not magic. Just ownership.
 
 ═══════════════════════════════════════════════════════════════
 [TIER_HEADER]
@@ -189,14 +213,19 @@ contrast above is live yet, but activating it is one more 30 to
 60 minute investment and it's the highest-leverage time you'll
 spend with Caddy. Without it, the rest stays generic.
 
-  Step 1  /caddy:intake     Voice + brand interview (30-60 min)
+  Step 1  /caddy:intake     Voice + brand interview (30-60 min).
                             Caddy learns how you write and what
                             your business is about. Writes
                             ~/.caddy/voice.md and ~/.caddy/brand.md
                             in one sitting.
 
-  Step 2  /caddy:settings   Wire Gmail, Calendar, Drive connectors
-                            (a couple minutes)
+  Step 2  Connect your      In your browser at claude.ai, go to
+          email + calendar  Settings, then Connectors. Connect
+          at claude.ai      Gmail, Calendar, and Drive. A couple
+                            minutes per service. This is what lets
+                            /triage, /prep, and /followup see your
+                            inbox and calendar. Connector state lives
+                            in your Anthropic account, not on disk.
 
 After those two, run /start-of-day every morning. That's when the
 compounding starts.
@@ -213,30 +242,26 @@ leverage time you'll ever spend with Caddy.
 
 ```
 [TIER_HEADER]
-WHAT'S WIRED FOR YOU
+INTAKE STARTED, KEEP GOING
 
 [TIER_BODY]
-[Voice line]
-[Brand line]
-[Connector line]
+Your voice fingerprint is captured but thin. Caddy can draft for
+you today, but the output will lean generic until you give it
+richer source material.
 
-Each ✓ is a layer that makes Caddy uniquely yours.
-Each ○ is a 5-to-60 minute unlock for more power.
+Re-run /caddy:intake when you have a longer block of time. Paste
+in 500+ words of your actual writing (a recent email, a LinkedIn
+post, a memo) and answer the questions in your real voice.
+
+The fingerprint depth IS the quality ceiling for everything Caddy
+writes for you. Thin in, thin out.
 
 [NEXT_MOVE]
-► Run this next:  [next_command]
-[next_reason]
+► Run this next:  /caddy:intake
+
+Worth doing right when you have the time. 30 to 60 minutes spent
+here saves you hours of draft cleanup over the next month.
 ```
-
-For the three status lines, use:
-- Voice ✓: `✓ Voice fingerprint loaded. /draft writes in your voice.`
-- Voice ○: `○ Voice not loaded yet. /caddy:intake (30-60 min) unlocks /draft + voice-matched output across every skill.`
-- Brand ✓: `✓ Brand context loaded. Caddy knows your positioning.`
-- Brand ○: `○ Brand not loaded yet. /caddy:intake (30-60 min, same interview as voice) makes everything Caddy writes sound like *your* business.`
-- Connector ✓: `✓ Anthropic connectors live. Gmail, Calendar, Drive integrated.`
-- Connector ○: `○ Copy-paste mode. /caddy:settings set connector anthropic-connector unlocks /triage, /prep, /followup at full power.`
-
-For `[next_command]` and `[next_reason]`, use the priority order from the `try` subcommand below.
 
 ### Tier: Compounding
 
@@ -245,11 +270,10 @@ For `[next_command]` and `[next_reason]`, use the priority order from the `try` 
 YOU'RE IN THE COMPOUND
 
 [TIER_BODY]
-Voice ✓  Brand ✓  Connectors ✓
-
-Your Caddy is past Day 1 and into the part that matters: every week
-it knows more about how you work, what you've decided, and how you
-write. This is the moat.
+Voice fingerprint substantive. You're past Day 1 and into the
+part that matters: every week your Caddy knows more about how
+you work, what you've decided, and how you write. This is where
+Caddy gets materially more useful than raw Claude.
 
 [NEXT_MOVE]
 ► Run this next:  /base:weekly
@@ -289,11 +313,11 @@ Want the full picture? Run /caddy:capabilities
 
 Priority order for `[next_command]` and `[next_reason]`:
 
-1. **No voice fingerprint** → `/caddy:intake` / "Voice is the biggest single unlock. Caddy without your voice is just a generic LLM with extra steps. Do this first."
-2. **No brand context** (voice exists but brand doesn't, which is rare since intake produces both) → `/caddy:intake` / "Re-run intake to add the brand half. Brand context is what makes Caddy's output sound like *your* business, not a template."
-3. **No connectors** → `/caddy:settings set connector anthropic-connector` / "Connectors unlock the daily-driver skills like /triage and /prep at full power."
-4. **All present, voice.md under 500 bytes** → `/caddy:intake` / "Your intake looks shallow. A deeper voice fingerprint = sharper output everywhere. Re-run when you have 30 to 60 minutes."
-5. **All present, voice.md healthy** → `/base:weekly` / "The weekly ritual is what compounds 30 days of memory into a Caddy that anticipates you."
+1. **Day 1 (no voice.md)** → `/caddy:intake` / "Voice is the biggest single unlock. Caddy without your voice is just a generic LLM with extra steps. Do this first."
+2. **Activated (voice.md exists, under 500 bytes)** → `/caddy:intake` / "Your intake looks shallow. A deeper voice fingerprint sharpens output across every skill. Re-run when you have 30 to 60 minutes and richer writing samples to paste in."
+3. **Compounding (voice.md 500+ bytes)** → `/base:weekly` / "The weekly ritual is what compounds 30 days of memory into a Caddy that anticipates you."
+
+We do NOT recommend a connector-wiring next move from this skill. Connectors are wired at claude.ai (Settings, Connectors) and that state is not readable locally. Customers see the connector reminder once in the Day 1 tier and in the install guide.
 
 ## Drill-down outputs
 
@@ -329,12 +353,15 @@ EXAMPLE WORKFLOW: Daily LinkedIn post
      change. It re-drafts in your voice.
   3. Paste to LinkedIn.
 
-EXAMPLE WORKFLOW: Cleaning up an AI-written draft
-  1. Paste the generic AI draft into chat.
-  2. Run /caddy:draft "rewrite this in my voice: <paste>"
-  3. Caddy re-drafts using your voice fingerprint and brand
-     context, killing the AI tells (generic openers, corporate
-     hedging, em dashes) and replacing them with how YOU write.
+EXAMPLE WORKFLOW: Weekly client check-in
+  1. /caddy:draft "weekly check-in email to my five top clients,
+     asking what's on their mind this week and offering 15 min
+     if they need it"
+  2. Caddy drafts in your voice, brand-aware. You skim, tweak the
+     one or two phrases that don't quite land, and send.
+
+  The drafts that used to take you 20 minutes each take 2 minutes
+  to review.
 
 YOUR NEXT MOVE
 ► [next_move based on tier and what's missing in voice/brand]
