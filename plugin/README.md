@@ -257,7 +257,7 @@ These come from the small Node script that bridges Claude Code to the Caddy back
 | `proxy: upstream 401` | Your `CADDY_BEARER_TOKEN` was rejected by Caddy (wrong, expired, or revoked). | Verify the env var matches the bearer you received from your exchange URL. If it does and still fails, your token may have been rotated. Email hi@meetcaddy.com to reissue. |
 | `proxy: upstream 4xx` (other 4xx) | Caddy rejected the request (rare; typically a malformed call). | Try again. If it persists, email hi@meetcaddy.com with the timestamp. |
 | `proxy: upstream 5xx` | Caddy backend is having problems. | Wait 60 seconds and retry. If persistent across multiple drafts, email hi@meetcaddy.com. |
-| `proxy: could not reach Caddy server (ENOTFOUND \| ECONNREFUSED \| ETIMEDOUT)` | Network connectivity issue (DNS, firewall, or Caddy is down). | Check your internet connection. If you're behind a corporate firewall, the proxy needs outbound HTTPS to `caddy-app-tbern75s-projects.vercel.app`. If your network is fine, Caddy itself may be down — wait, then retry. |
+| `proxy: could not reach Caddy server (ENOTFOUND \| ECONNREFUSED \| ETIMEDOUT)` | Network connectivity issue (DNS, firewall, or Caddy is down). | Check your internet connection. If you're behind a corporate firewall, the proxy needs outbound HTTPS to `api.meetcaddy.com`. If your network is fine, Caddy itself may be down — wait, then retry. |
 | `proxy: stream interrupted` | The streaming response was cut off mid-flight (network blip, laptop sleep, etc.). | Try again. The draft was not delivered; this is a fresh run. |
 | Anything else starting with `proxy:` | Unexpected proxy error. | Email hi@meetcaddy.com with the full error text and the timestamp. |
 
@@ -344,7 +344,7 @@ A few rough edges to be aware of. None are blockers, but they affect how you'll 
 
 ## Under the hood (for curious operators)
 
-The plugin ships a small Node.js stdio-to-HTTP proxy at `bin/caddy-mcp-proxy.mjs` (about 100 lines, zero third-party dependencies). It reads only `CADDY_BEARER_TOKEN` from the shell environment and forwards MCP requests to Caddy's server at https://caddy-app-tbern75s-projects.vercel.app/api/mcp with that bearer attached for a license check. Caddy is single-billing: the `/api/mcp` endpoint validates your license only — it performs no model generation. The actual drafting and operator-rhythm work is done by the self-contained skill files running inside your own Claude Code session on your existing Claude subscription. Node.js 18 or higher is required (built-in `fetch`).
+The plugin ships a small Node.js stdio-to-HTTP proxy at `bin/caddy-mcp-proxy.mjs` (about 100 lines, zero third-party dependencies). It reads only `CADDY_BEARER_TOKEN` from the shell environment and forwards MCP requests to Caddy's server at https://api.meetcaddy.com/api/mcp with that bearer attached for a license check. Caddy is single-billing: the `/api/mcp` endpoint validates your license only — it performs no model generation. The actual drafting and operator-rhythm work is done by the self-contained skill files running inside your own Claude Code session on your existing Claude subscription. Node.js 18 or higher is required (built-in `fetch`).
 
 Your bearer token is your Caddy license. There is no Anthropic API key in the flow, and Caddy never makes a model call on your behalf — generation happens in your own Claude Code session.
 

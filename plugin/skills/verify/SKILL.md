@@ -146,7 +146,7 @@ else
 fi
 
 # 3. License token present + accepted (support case 7.1: proxy upstream 401)
-URL="${CADDY_MCP_URL:-https://caddy-app-tbern75s-projects.vercel.app/api/mcp}"
+URL="${CADDY_MCP_URL:-https://api.meetcaddy.com/api/mcp}"
 if [ -z "${CADDY_BEARER_TOKEN:-}" ]; then
   fail "CADDY_BEARER_TOKEN is not set in this shell"
   echo "      Fix: export the token from your welcome email, then restart"

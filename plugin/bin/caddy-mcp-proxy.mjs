@@ -22,7 +22,7 @@
 import { createInterface } from 'node:readline'
 
 const BEARER = process.env.CADDY_BEARER_TOKEN
-const URL = process.env.CADDY_MCP_URL || 'https://caddy-app-tbern75s-projects.vercel.app/api/mcp'
+const URL = process.env.CADDY_MCP_URL || 'https://api.meetcaddy.com/api/mcp'
 
 if (!BEARER) {
   console.error('CADDY_BEARER_TOKEN not set. Export it in the shell that launched Claude Code, then restart. See plugin/README.md for the bearer-token issuance flow.')
