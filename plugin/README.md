@@ -4,7 +4,7 @@
 
 Caddy. Your unfair advantage. Voice-fingerprinted drafts and operator rhythm, running in your own Claude Code on your existing Claude subscription.
 
-This plugin is the thin Claude Code surface for Caddy. The skills run inside your own Claude Code session on your Claude subscription — no prompt logic or model routing runs server-side. Caddy is single-billing: the backend's only role is validating your license.
+This plugin is the thin Claude Code surface for Caddy. The skills run inside your own Claude Code session on your Claude subscription. No prompt logic or model routing runs server-side. Caddy is single-billing: the backend's only role is validating your license.
 
 ---
 
@@ -22,7 +22,7 @@ If you do not have Claude Code yet, install it first: see https://docs.claude.co
 
 One long-lived secret, exported as an environment variable in the shell that launches Claude Code:
 
-1. **`CADDY_BEARER_TOKEN`** — your Caddy account token. Issued via a one-time exchange URL Tucker sends after invite approval. The URL is good for a single click; you redeem it to receive the bearer token in your browser, then paste the token into your shell profile (or `.env`). Treat the bearer token like a password.
+1. **`CADDY_BEARER_TOKEN`**: your Caddy account token. Issued via a one-time exchange URL Tucker sends after invite approval. The URL is good for a single click; you redeem it to receive the bearer token in your browser, then paste the token into your shell profile (or `.env`). Treat the bearer token like a password.
 
 Caddy is single-billing: drafting and operator-rhythm work run inside your own Claude Code session on your existing Claude subscription. There is no separate Anthropic API key to obtain, set, or pay for.
 
@@ -51,6 +51,8 @@ Caddy is single-billing: drafting and operator-rhythm work run inside your own C
    ```
    It should print something (the `:0:8` only shows the first 8 chars; full token isn't echoed).
 
+   > **Dock-launched Mac apps:** the Claude Code desktop app launched from the Dock or Finder does NOT inherit `CADDY_BEARER_TOKEN` from `~/.zshrc` (only Terminal-launched sessions do), so the `caddy` MCP can fail to connect there. If that happens, write the token to a file the app can always read: `mkdir -p ~/.caddy && printf '%s' "$CADDY_BEARER_TOKEN" > ~/.caddy/bearer-token && chmod 600 ~/.caddy/bearer-token`. The proxy reads `CADDY_BEARER_TOKEN` first, then falls back to `~/.caddy/bearer-token` (override the path with `CADDY_BEARER_TOKEN_FILE`).
+
 2. Create your local voice + brand markdown (the plugin reads these on every draft):
 
    ```sh
@@ -68,7 +70,7 @@ Caddy is single-billing: drafting and operator-rhythm work run inside your own C
 
    The first command registers Caddy's plugin catalog. The second downloads the plugin into your Claude Code session (sparse clone of the `plugin/` folder, pinned to the commit the marketplace currently tags).
 
-4. **Single-billing:** Caddy runs entirely inside your own Claude Code session on your existing Claude subscription. If Claude Code prompts you about an API key for the MCP server, just hit Enter to skip — Caddy does not need one.
+4. **Single-billing:** Caddy runs entirely inside your own Claude Code session on your existing Claude subscription. If Claude Code prompts you about an API key for the MCP server, just hit Enter to skip. Caddy does not need one.
 
 5. Test:
 
@@ -88,7 +90,7 @@ If this is your first time using Caddy on this machine, run `/caddy:intake` once
 /caddy:intake
 ```
 
-Your interview answers stay local on your machine. Caddy is single-billing: `/caddy:draft` reads `~/.caddy/voice.md` and `~/.caddy/brand.md` locally inside your own Claude Code session — they are never sent to Caddy's backend (the backend only validates your license).
+Your interview answers stay local on your machine. Caddy is single-billing: `/caddy:draft` reads `~/.caddy/voice.md` and `~/.caddy/brand.md` locally inside your own Claude Code session. They are never sent to Caddy's backend (the backend only validates your license).
 
 ---
 
@@ -143,7 +145,7 @@ Caddy ships with a local-only settings command for tuning plugin behavior. Setti
 ```
 
 Available settings:
-- `connector` — values: `anthropic-connector` or `copy-paste`. Optional. Future anchor skills (intake, triage, etc.) will branch on this; `/caddy:draft` does not read it.
+- `connector`. Values: `anthropic-connector` or `copy-paste`. Optional. Future anchor skills (intake, triage, etc.) will branch on this; `/caddy:draft` does not read it.
 
 ---
 
@@ -181,7 +183,7 @@ brew install caddy-frameworks
 caddy-link
 ```
 
-After that, run `/caddy:base-setup` once inside Claude Code. It installs `base-mcp` at the fixed home `~/.caddy/base` and registers it at Claude Code **user scope**, so the `mcp__base-mcp__*` tools are available in every session from any folder — there is no per-workspace step and no folder to remember. The setup is idempotent (safe to re-run); a re-run cleanly repairs a stale registration.
+After that, run `/caddy:base-setup` once inside Claude Code. It installs `base-mcp` at the fixed home `~/.caddy/base` and registers it at Claude Code **user scope**, so the `mcp__base-mcp__*` tools are available in every session from any folder. There is no per-workspace step and no folder to remember. The setup is idempotent (safe to re-run); a re-run cleanly repairs a stale registration.
 
 Upstream: `@chrisai/base@3.1.5` by Christopher Kahler (MIT).
 
@@ -191,7 +193,7 @@ Upstream: `@chrisai/base@3.1.5` by Christopher Kahler (MIT).
 
 CARL (Context Augmentation & Reinforcement Layer) is a rule-routing + decision-logging framework: it tracks which rules apply to which contexts, logs decisions per domain, and supports staged proposals with operator approval. Once installed, CARL gives Claude Code a durable "what did we already decide and why?" memory layer. Caddy's `/caddy:carl-setup` installs CARL's MCP server once at a fixed home (`~/.carl`) and registers it at Claude Code **user scope**, so it loads in every session from any folder; the underlying carl-core package comes from the Homebrew tap.
 
-CARL is **MCP-only** — it ships no slash commands or suite skills, just 30 MCP tools you call by name (or by asking Claude in chat). The starter set (8 v2 tools):
+CARL is **MCP-only**: it ships no slash commands or suite skills, just 30 MCP tools you call by name (or by asking Claude in chat). The starter set (8 v2 tools):
 
 ```
 mcp__carl-mcp__carl_v2_log_decision       # log a decision in CARL state
@@ -206,7 +208,7 @@ mcp__carl-mcp__carl_v2_get_staged         # see what's pending approval
 
 The remaining 22 tools cover advanced cases: rule CRUD (`add_rule`, `remove_rule`, `replace_rules`), archival, domain creation/toggling, and v1 legacy tools kept for back-compat with CARL workspaces from prior installs.
 
-**Prerequisite (one-time per machine):** install the Caddy Homebrew tap — the `caddy-frameworks` meta-formula bundles CARL alongside BASE + PAUL + SEED + Skillsmith + Aegis:
+**Prerequisite (one-time per machine):** install the Caddy Homebrew tap: the `caddy-frameworks` meta-formula bundles CARL alongside BASE + PAUL + SEED + Skillsmith + Aegis:
 
 ```
 brew tap meetcaddy/caddy
@@ -214,9 +216,9 @@ brew install caddy-frameworks
 caddy-link
 ```
 
-After that, run `/caddy:carl-setup` once inside Claude Code. It installs `carl-mcp` at the fixed home `~/.carl` and registers it at Claude Code **user scope**, so the `mcp__carl-mcp__*` tools are available in every session from any folder — there is no per-workspace step. CARL keeps one global `~/.carl/` directory (decisions log + sessions). The setup is idempotent (safe to re-run); a re-run cleanly repairs a stale registration.
+After that, run `/caddy:carl-setup` once inside Claude Code. It installs `carl-mcp` at the fixed home `~/.carl` and registers it at Claude Code **user scope**, so the `mcp__carl-mcp__*` tools are available in every session from any folder. There is no per-workspace step. CARL keeps one global `~/.carl/` directory (decisions log + sessions). The setup is idempotent (safe to re-run); a re-run cleanly repairs a stale registration.
 
-**Rule injection into every prompt, from any folder:** `/caddy:carl-setup` automatically registers CARL's `UserPromptSubmit` hook in your Claude Code `settings.json` (with a one-time backup of the prior file). Because the CARL scope lives at `~/.carl`, the hook's existing walk-up discovers it from any working directory under your home folder, so active CARL rules inject into every prompt no matter where Claude Code was launched. No manual step — it is part of the setup skill.
+**Rule injection into every prompt, from any folder:** `/caddy:carl-setup` automatically registers CARL's `UserPromptSubmit` hook in your Claude Code `settings.json` (with a one-time backup of the prior file). Because the CARL scope lives at `~/.carl`, the hook's existing walk-up discovers it from any working directory under your home folder, so active CARL rules inject into every prompt no matter where Claude Code was launched. No manual step. It is part of the setup skill.
 
 Upstream: `carl-core@2.0.2` by Christopher Kahler (MIT). Same upstream author as BASE.
 
@@ -246,7 +248,7 @@ If you suspect your bearer token is leaked, email **hi@meetcaddy.com** immediate
 
 ## First-call failure table
 
-Caddy is single-billing: `/caddy:draft` and the other skills run inside your own Claude Code session on your Claude subscription, so there is no Caddy-side model call and no Anthropic API error codes to decode. Real failures fall into three buckets — the plugin's license proxy, Claude Code's own auth, and install issues — each covered below.
+Caddy is single-billing: `/caddy:draft` and the other skills run inside your own Claude Code session on your Claude subscription, so there is no Caddy-side model call and no Anthropic API error codes to decode. Real failures fall into three buckets (the plugin's license proxy, Claude Code's own auth, and install issues), each covered below.
 
 ### Errors from the plugin's local proxy (start with `proxy:`)
 
@@ -257,7 +259,7 @@ These come from the small Node script that bridges Claude Code to the Caddy back
 | `proxy: upstream 401` | Your `CADDY_BEARER_TOKEN` was rejected by Caddy (wrong, expired, or revoked). | Verify the env var matches the bearer you received from your exchange URL. If it does and still fails, your token may have been rotated. Email hi@meetcaddy.com to reissue. |
 | `proxy: upstream 4xx` (other 4xx) | Caddy rejected the request (rare; typically a malformed call). | Try again. If it persists, email hi@meetcaddy.com with the timestamp. |
 | `proxy: upstream 5xx` | Caddy backend is having problems. | Wait 60 seconds and retry. If persistent across multiple drafts, email hi@meetcaddy.com. |
-| `proxy: could not reach Caddy server (ENOTFOUND \| ECONNREFUSED \| ETIMEDOUT)` | Network connectivity issue (DNS, firewall, or Caddy is down). | Check your internet connection. If you're behind a corporate firewall, the proxy needs outbound HTTPS to `api.meetcaddy.com`. If your network is fine, Caddy itself may be down — wait, then retry. |
+| `proxy: could not reach Caddy server (ENOTFOUND \| ECONNREFUSED \| ETIMEDOUT)` | Network connectivity issue (DNS, firewall, or Caddy is down). | Check your internet connection. If you're behind a corporate firewall, the proxy needs outbound HTTPS to `api.meetcaddy.com`. If your network is fine, Caddy itself may be down. Wait, then retry. |
 | `proxy: stream interrupted` | The streaming response was cut off mid-flight (network blip, laptop sleep, etc.). | Try again. The draft was not delivered; this is a fresh run. |
 | Anything else starting with `proxy:` | Unexpected proxy error. | Email hi@meetcaddy.com with the full error text and the timestamp. |
 
@@ -325,14 +327,14 @@ Do **not** include your bearer token in support emails. We do not need it to deb
 
 A few rough edges to be aware of. None are blockers, but they affect how you'll interact with the plugin day to day.
 
-- **Caddy runs on your own Claude session — no Anthropic API key.** You do not set or pay for an `ANTHROPIC_API_KEY`. If Claude Code ever asks about an API key for the MCP server, hit Enter to skip; Caddy does not need one.
+- **Caddy runs on your own Claude session. No Anthropic API key.** You do not set or pay for an `ANTHROPIC_API_KEY`. If Claude Code ever asks about an API key for the MCP server, hit Enter to skip; Caddy does not need one.
   - **If you see `Please run /login`:** Claude Code's own sign-in is missing or expired (common on a fresh install). Type `/login` inside Claude Code, complete the browser sign-in, and retry. This is purely a Claude Code thing; the Caddy plugin is unaffected.
 
 - **Env vars must be exported in the same shell that launches Claude Code.** If you start Claude Code from one terminal and your `export CADDY_BEARER_TOKEN` line lives in `~/.bashrc` but you launched from a zsh session (or vice versa), the plugin won't see the token. Use `echo $CADDY_BEARER_TOKEN` in the same terminal *before* launching Claude Code to verify it's set.
 
-- **`/caddy:draft`, `/caddy:settings`, `/caddy:intake`, `/caddy:triage`, `/caddy:start-of-day`, `/caddy:prep`, and `/caddy:followup` are ALL shipped.** That's the full v1.0 anchor skills set. v1.1+ ports the remaining 38+ skills.
+- **`/caddy:draft`, `/caddy:settings`, `/caddy:intake`, `/caddy:triage`, `/caddy:start-of-day`, `/caddy:prep`, and `/caddy:followup` are ALL shipped.** That's the full v1.0 anchor skills set. v1.1+ ports the remaining skills.
 
-- **Only one customer-settable key in v1.0: `connector` (modes: `anthropic-connector` or `copy-paste`).** Additional settings — voice strictness, model preference, draft length, etc. — ship in v1.1+. The config file schema includes a `schemaVersion` field so future settings can be added without breaking existing customer config.
+- **Only one customer-settable key in v1.0: `connector` (modes: `anthropic-connector` or `copy-paste`).** Additional settings (voice strictness, model preference, draft length, etc.) ship in v1.1+. The config file schema includes a `schemaVersion` field so future settings can be added without breaking existing customer config.
 
 - **Concurrent drafts are not isolated.** If you fire two `/caddy:draft` calls back-to-back without waiting for the first to finish, the second one will queue rather than parallelize cleanly. Wait for the first stream to complete.
 
@@ -344,9 +346,9 @@ A few rough edges to be aware of. None are blockers, but they affect how you'll 
 
 ## Under the hood (for curious operators)
 
-The plugin ships a small Node.js stdio-to-HTTP proxy at `bin/caddy-mcp-proxy.mjs` (about 100 lines, zero third-party dependencies). It reads only `CADDY_BEARER_TOKEN` from the shell environment and forwards MCP requests to Caddy's server at https://api.meetcaddy.com/api/mcp with that bearer attached for a license check. Caddy is single-billing: the `/api/mcp` endpoint validates your license only — it performs no model generation. The actual drafting and operator-rhythm work is done by the self-contained skill files running inside your own Claude Code session on your existing Claude subscription. Node.js 18 or higher is required (built-in `fetch`).
+The plugin ships a small Node.js stdio-to-HTTP proxy at `bin/caddy-mcp-proxy.mjs` (about 100 lines, zero third-party dependencies). It reads only `CADDY_BEARER_TOKEN` from the shell environment and forwards MCP requests to Caddy's server at https://api.meetcaddy.com/api/mcp with that bearer attached for a license check. Caddy is single-billing: the `/api/mcp` endpoint validates your license only. It performs no model generation. The actual drafting and operator-rhythm work is done by the self-contained skill files running inside your own Claude Code session on your existing Claude subscription. Node.js 18 or higher is required (built-in `fetch`).
 
-Your bearer token is your Caddy license. There is no Anthropic API key in the flow, and Caddy never makes a model call on your behalf — generation happens in your own Claude Code session.
+Your bearer token is your Caddy license. There is no Anthropic API key in the flow, and Caddy never makes a model call on your behalf. Generation happens in your own Claude Code session.
 
 ---
 

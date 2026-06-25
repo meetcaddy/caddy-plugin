@@ -63,7 +63,7 @@ Single source of truth. The rest of the customer copy references the marketing s
 | CARL | MCP tools | 30 | The rules engine. Domain rules, decision log, governance for how your AI behaves. |
 | **Total** | | **146** | **Marketed as "140+" for headroom.** |
 
-Note: 13 plugin skills includes `/caddy:capabilities` itself (this file) and `/caddy:upgrade` (added v0.6.0, the one-command Caddy upgrade flow).
+Note: 13 plugin skills includes `/caddy:capabilities` itself (this file) and `/caddy:upgrade` (the one-command Caddy upgrade flow).
 
 ## Full overview output (default)
 

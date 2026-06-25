@@ -805,9 +805,9 @@ print('code_only:', code_only)
 "
 ```
 
-If `code_only` is True: print `[graphify update] Code-only changes detected - skipping semantic extraction (no LLM needed)`, run only Step 3A (AST) on the changed files, skip Step 3B entirely (no subagents), then go straight to merge and Steps 4–8.
+If `code_only` is True: print `[graphify update] Code-only changes detected - skipping semantic extraction (no LLM needed)`, run only Step 3A (AST) on the changed files, skip Step 3B entirely (no subagents), then go straight to merge and Steps 4-8.
 
-If `code_only` is False (any changed file is a doc/paper/image): run the full Steps 3A–3C pipeline as normal.
+If `code_only` is False (any changed file is a doc/paper/image): run the full Steps 3A-3C pipeline as normal.
 
 Then:
 
@@ -858,7 +858,7 @@ print('[graphify update] Manifest saved.')
 "
 ```
 
-Then run Steps 4–8 on the merged graph as normal.
+Then run Steps 4-8 on the merged graph as normal.
 
 After Step 4, show the graph diff:
 
@@ -894,13 +894,13 @@ Clean up after: `rm -f graphify-out/.graphify_old.json`
 
 ## For --cluster-only
 
-Skip Steps 1–3. Re-run clustering on the existing graph:
+Skip Steps 1-3. Re-run clustering on the existing graph:
 
 ```bash
 graphify cluster-only .
 ```
 
-Then run Steps 5–9 as normal (label communities, generate viz, benchmark, clean up, report).
+Then run Steps 5-9 as normal (label communities, generate viz, benchmark, clean up, report).
 
 ---
 

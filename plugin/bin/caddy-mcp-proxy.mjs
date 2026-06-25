@@ -20,12 +20,44 @@
 // response body. Only log error categories.
 
 import { createInterface } from 'node:readline'
+import { readFileSync, statSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 
-const BEARER = process.env.CADDY_BEARER_TOKEN
+// Resolve the bearer token. Primary source is the env block the plugin
+// .mcp.json expands (CADDY_BEARER_TOKEN). Fallback: a token file, so the proxy
+// also works when Claude Code is launched from the macOS Dock / Finder, where a
+// GUI app does NOT inherit shell env from ~/.zshrc (only Terminal-launched
+// sessions do). File path is CADDY_BEARER_TOKEN_FILE, else ~/.caddy/bearer-token.
+// Logging discipline (see header): NEVER log the token; a loose-perms warning is fine.
+function resolveBearer() {
+  const fromEnv = process.env.CADDY_BEARER_TOKEN
+  if (fromEnv && fromEnv.trim()) return fromEnv.trim()
+  const file = process.env.CADDY_BEARER_TOKEN_FILE || join(homedir(), '.caddy', 'bearer-token')
+  try {
+    const token = readFileSync(file, 'utf8').trim()
+    if (!token) return undefined
+    try {
+      // A bearer-token file should be user-only (0600). Warn (don't fail) if it
+      // is group/other-accessible so the user can tighten it.
+      if (statSync(file).mode & 0o077) {
+        console.error(`CADDY_BEARER_TOKEN_FILE ${file} is group/other-accessible; run: chmod 600 ${file}`)
+      }
+    } catch {
+      // stat failure is non-fatal; the token was already read.
+    }
+    return token
+  } catch {
+    // No file, unreadable, or empty — fall through to the not-set exit below.
+    return undefined
+  }
+}
+
+const BEARER = resolveBearer()
 const URL = process.env.CADDY_MCP_URL || 'https://api.meetcaddy.com/api/mcp'
 
 if (!BEARER) {
-  console.error('CADDY_BEARER_TOKEN not set. Export it in the shell that launched Claude Code, then restart. See plugin/README.md for the bearer-token issuance flow.')
+  console.error('CADDY_BEARER_TOKEN not set. Export it in the shell that launched Claude Code (then restart), or write it to ~/.caddy/bearer-token (chmod 600) so a Dock-launched app can read it. See plugin/README.md for the bearer-token issuance flow.')
   process.exit(1)
 }
 
