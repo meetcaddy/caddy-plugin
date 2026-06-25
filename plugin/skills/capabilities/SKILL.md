@@ -54,16 +54,16 @@ Single source of truth. The rest of the customer copy references the marketing s
 
 | System | Type | Count | One-liner |
 |---|---|---|---|
-| Caddy plugin | Skills | 13 | Your daily operating layer. Draft, triage, prep, follow up, ship the day. |
+| Caddy plugin | Skills | 15 | Your daily operating layer. Draft, triage, prep, follow up, ship the day. |
 | PAUL | Commands | 28 | Plan and execute real projects in structured phases. Built for non-coders. |
 | SEED | Commands | 27 | Turn vague ideas into scoped, buildable projects before you commit time. |
 | BASE | Commands | 26 | Your AI's memory, orientation, and operator profile. The thing that makes Caddy *yours*. |
 | Skillsmith | Commands | 12 | Build your own custom AI skills for workflows nobody else has. |
 | Aegis | Commands | 10 | Enterprise-grade security audits and remediation playbooks. |
 | CARL | MCP tools | 30 | The rules engine. Domain rules, decision log, governance for how your AI behaves. |
-| **Total** | | **146** | **Marketed as "140+" for headroom.** |
+| **Total** | | **148** | **Marketed as "140+" for headroom.** |
 
-Note: 13 plugin skills includes `/caddy:capabilities` itself (this file) and `/caddy:upgrade` (the one-command Caddy upgrade flow).
+Note: 15 plugin skills includes `/caddy:capabilities` itself (this file) and `/caddy:upgrade` (the one-command Caddy upgrade flow).
 
 ## Full overview output (default)
 
@@ -133,7 +133,7 @@ THE 140+ PIECE PROOF
 ═══════════════════════════════════════════════════════════════
 Seven interlocking systems. All yours. All local. One-time license.
 
-▸ THE DAILY LAYER  (13 commands)
+▸ THE DAILY LAYER  (15 commands)
    Your morning brief, inbox triage, meeting prep, follow-up
    recaps, voice-fingerprinted drafts. The rituals that run your
    week, built once, used forever.
