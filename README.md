@@ -21,8 +21,8 @@ Full install instructions, troubleshooting, and credential management lives in `
 ## For the curious
 
 This mirror contains:
-- `.claude-plugin/marketplace.json` — the Claude Code marketplace catalog that lists Caddy
-- `plugin/` — the plugin shim Claude Code installs (a ~250-line manifest + stdio→HTTPS proxy + skill markdown)
+- `.claude-plugin/marketplace.json`: the Claude Code marketplace catalog that lists Caddy
+- `plugin/`: the plugin shim Claude Code installs (a ~250-line manifest + stdio→HTTPS proxy + skill markdown)
 
 It does NOT contain Caddy's actual prompts, skills, agents, frameworks, or any of the methodology that defines the product. Those live on Caddy's servers behind authentication. Cloning this repo gives you a transport-layer shim that is useless without a valid Caddy account.
 
